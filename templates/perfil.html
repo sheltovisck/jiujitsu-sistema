@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Meu Perfil - JJ System{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+    <div class="avatar-circle bg-dark text-white">
+        <i class="bi bi-person-fill fs-2"></i>
+    </div>
+    <div>
+        <h2 class="fw-bold mb-0">{{ current_user.nome_completo or current_user.username }}</h2>
+        <p class="text-muted mb-0 small">
+            @{{ current_user.username }} &bull; {{ current_user.email }}
+            {% if current_user.perfil_completo() %}
+                <span class="badge bg-success ms-2"><i class="bi bi-check-circle me-1"></i>Perfil completo</span>
+            {% else %}
+                <span class="badge bg-warning text-dark ms-2"><i class="bi bi-exclamation-triangle me-1"></i>Perfil incompleto</span>
+            {% endif %}
+        </p>
+    </div>
+    <div class="ms-auto">
+        <a href="{{ url_for('historico_faixa') }}" class="btn btn-outline-dark">
+            <i class="bi bi-award me-1"></i>Historico de Faixas
+        </a>
+    </div>
+</div>
+
+{% if not current_user.perfil_completo() %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>Complete seu perfil</strong> para poder se inscrever em competicoes.
+</div>
+{% endif %}
+
+<form method="POST">
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-dark text-white fw-bold">
+                    <i class="bi bi-person me-2"></i>Dados Pessoais
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nome completo <span class="text-danger">*</span></label>
+                        <input type="text" name="nome_completo" class="form-control"
+                               value="{{ current_user.nome_completo or '' }}" placeholder="Seu nome completo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">CPF <span class="text-danger">*</span></label>
+                        <input type="text" name="cpf" class="form-control" id="cpfInput"
+                               value="{{ current_user.cpf or '' }}" placeholder="000.000.000-00" maxlength="14">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Data de nascimento</label>
+                        <input type="date" name="data_nascimento" class="form-control"
+                               value="{{ current_user.data_nascimento.strftime('%Y-%m-%d') if current_user.data_nascimento else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Telefone <span class="text-danger">*</span></label>
+                        <input type="tel" name="telefone" class="form-control" id="telInput"
+                               value="{{ current_user.telefone or '' }}" placeholder="(00) 00000-0000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Sexo <span class="text-danger">*</span></label>
+                        <select name="sexo" class="form-select">
+                            <option value="">Selecionar...</option>
+                            <option value="M" {% if current_user.sexo == 'M' %}selected{% endif %}>Masculino</option>
+                            <option value="F" {% if current_user.sexo == 'F' %}selected{% endif %}>Feminino</option>
+                        </select>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-8">
+                            <label class="form-label fw-semibold">Cidade</label>
+                            <input type="text" name="cidade" class="form-control"
+                                   value="{{ current_user.cidade or '' }}" placeholder="Sua cidade">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold">UF</label>
+                            <select name="estado" class="form-select">
+                                <option value="">UF</option>
+                                {% for uf in ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'] %}
+                                <option value="{{ uf }}" {% if current_user.estado == uf %}selected{% endif %}>{{ uf }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-danger text-white fw-bold">
+                    <i class="bi bi-award me-2"></i>Dados de Jiu-Jitsu
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Academia <span class="text-danger">*</span></label>
+                        {% if academias %}
+                        <select name="academia_id" id="academiaSelect" class="form-select">
+                            <option value="">Selecionar academia...</option>
+                            {% for ac in academias %}
+                            <option value="{{ ac.id }}" {% if current_user.academia_id == ac.id %}selected{% endif %}>
+                                {{ ac.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <div class="alert alert-warning py-2 small mb-0">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Nenhuma academia cadastrada. Solicite ao administrador.
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Professor <span class="text-danger">*</span></label>
+                        <select name="professor_id" id="professorSelect" class="form-select">
+                            <option value="">Selecionar professor...</option>
+                            {% for prof in professores %}
+                            {% if not current_user.academia_id or prof.academia_id == current_user.academia_id %}
+                            <option value="{{ prof.id }}" {% if current_user.professor_id == prof.id %}selected{% endif %}>
+                                {{ prof.nome }}
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Selecione a academia primeiro para filtrar os professores</div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label class="form-label fw-semibold">Faixa <span class="text-danger">*</span></label>
+                            <select name="faixa" class="form-select">
+                                <option value="">Selecionar...</option>
+                                {% for f in ['Branca','Cinza','Amarela','Laranja','Verde','Azul','Roxa','Marrom','Preta','Vermelha e Preta','Vermelha e Branca','Vermelha'] %}
+                                <option value="{{ f }}" {% if current_user.faixa == f %}selected{% endif %}>{{ f }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label fw-semibold">Grau</label>
+                            <select name="grau" class="form-select">
+                                <option value="">Sem grau</option>
+                                {% for g in range(1, 5) %}
+                                <option value="{{ g }}" {% if current_user.grau == g|string %}selected{% endif %}>{{ g }}o grau</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Peso atual (kg)</label>
+                        <div class="input-group">
+                            <input type="number" name="peso" class="form-control" id="pesoInput"
+                                   value="{{ current_user.peso or '' }}" placeholder="Ex: 72.5" step="0.1" min="30" max="200">
+                            <span class="input-group-text">kg</span>
+                        </div>
+                    </div>
+                    {% if current_user.peso %}
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Categoria: <strong>{{ current_user.get_categoria_peso() }}</strong>
+                    </div>
+                    {% endif %}
+                    {% if current_user.faixa %}
+                    <div class="faixa-preview p-2 rounded text-center text-white fw-bold mt-2 faixa-{{ current_user.faixa.lower().replace(' ', '-') }}">
+                        <i class="bi bi-award-fill me-1"></i>
+                        Faixa {{ current_user.faixa }}{% if current_user.grau %} - {{ current_user.grau }}o grau{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 text-center">
+        <button type="submit" class="btn btn-danger btn-lg fw-bold px-5">
+            <i class="bi bi-save me-2"></i>Salvar Perfil
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Mascara CPF
+const cpf = document.getElementById('cpfInput');
+cpf && cpf.addEventListener('input', function() {
+    let v = this.value.replace(/\D/g,'').slice(0,11);
+    if(v.length>9) v=v.replace(/(\d{3})(\d{3})(\d{3})(\d)/,'$1.$2.$3-$4');
+    else if(v.length>6) v=v.replace(/(\d{3})(\d{3})(\d)/,'$1.$2.$3');
+    else if(v.length>3) v=v.replace(/(\d{3})(\d)/,'$1.$2');
+    this.value=v;
+});
+// Mascara Telefone
+const tel = document.getElementById('telInput');
+tel && tel.addEventListener('input', function() {
+    let v = this.value.replace(/\D/g,'').slice(0,11);
+    if(v.length>10) v=v.replace(/(\d{2})(\d{5})(\d)/,'($1) $2-$3');
+    else if(v.length>6) v=v.replace(/(\d{2})(\d{4})(\d)/,'($1) $2-$3');
+    else if(v.length>2) v=v.replace(/(\d{2})(\d)/,'($1) $2');
+    this.value=v;
+});
+// Filtrar professores ao trocar academia
+const academiaSelect = document.getElementById('academiaSelect');
+const professorSelect = document.getElementById('professorSelect');
+if (academiaSelect && professorSelect) {
+    academiaSelect.addEventListener('change', function() {
+        const acadId = this.value;
+        const profAtual = professorSelect.value;
+        professorSelect.innerHTML = '<option value="">Carregando...</option>';
+        if (\!acadId) {
+            professorSelect.innerHTML = '<option value="">Selecionar professor...</option>';
+            return;
+        }
+        fetch('/api/professores/' + acadId)
+            .then(r => r.json())
+            .then(profs => {
+                professorSelect.innerHTML = '<option value="">Selecionar professor...</option>';
+                profs.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.nome;
+                    if (p.id == profAtual) opt.selected = true;
+                    professorSelect.appendChild(opt);
+                });
+                if (profs.length === 0) {
+                    professorSelect.innerHTML = '<option value="">Nenhum professor nesta academia</option>';
+                }
+            });
+    });
+}
+</script>
+{% endblock %}

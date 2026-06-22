@@ -1,0 +1,76 @@
+=========================================
+  SISTEMA DE JIU-JITSU - COMO USAR
+=========================================
+
+REQUISITOS:
+  - Python 3.8 ou superior instalado
+    Download: https://www.python.org/downloads/
+    (Marque a opção "Add Python to PATH" durante instalação)
+
+-----------------------------------------
+COMO INICIAR O SISTEMA:
+-----------------------------------------
+
+Opção 1 (mais fácil):
+  - Dê dois cliques no arquivo "iniciar.bat"
+
+Opção 2 (manual):
+  1. Abra o Prompt de Comando (CMD) nesta pasta
+  2. Execute:  pip install -r requirements.txt
+  3. Execute:  python app.py
+  4. Abra o navegador em: http://localhost:5000
+
+-----------------------------------------
+ACESSO INICIAL:
+-----------------------------------------
+
+  Painel Admin:
+    URL:   http://localhost:5000/admin
+    Usuário: admin
+    Senha:   admin123
+    (TROQUE A SENHA após o primeiro acesso!)
+
+-----------------------------------------
+FUNCIONALIDADES:
+-----------------------------------------
+
+  ALUNOS podem:
+  ✓ Criar conta com usuário e senha
+  ✓ Preencher dados pessoais (nome, CPF, telefone, etc.)
+  ✓ Informar dados de jiu-jitsu (faixa, grau, academia, professor)
+  ✓ Ver competições disponíveis
+  ✓ Se inscrever em competições
+  ✓ Acompanhar status das inscrições
+
+  ADMINISTRADOR pode:
+  ✓ Ver todos os alunos cadastrados
+  ✓ Criar e gerenciar competições
+  ✓ Aprovar ou rejeitar inscrições
+  ✓ Visualizar chaves geradas por categoria e faixa
+  ✓ Filtrar inscrições por status e competição
+
+-----------------------------------------
+CATEGORIAS DE PESO (IBJJF):
+-----------------------------------------
+  Masculino: Pluma (até 57.5kg), Pena (64kg),
+             Leve (70kg), Meio-Leve (76kg), Meio (82.3kg),
+             Meio-Pesado (88.3kg), Pesado (94.3kg),
+             Super-Pesado (100.5kg), Pesadíssimo (acima)
+
+  Feminino:  Pluma (até 48.5kg), Pena (53.5kg),
+             Leve (58.5kg), Meio-Leve (64kg), Meio (69kg),
+             Meio-Pesado (74kg), Pesado (79.3kg),
+             Super-Pesado (84.3kg), Pesadíssimo (acima)
+
+-----------------------------------------
+ARQUIVOS DO SISTEMA:
+-----------------------------------------
+
+  app.py         - Servidor principal (Flask)
+  models.py      - Estrutura do banco de dados
+  templates/     - Páginas HTML
+  static/        - Imagens, CSS e JavaScript
+  jiujitsu.db    - Banco de dados (criado ao iniciar)
+  iniciar.bat    - Atalho para iniciar o sistema
+
+=========================================

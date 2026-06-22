@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Competicoes - JJ System{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-bold mb-0"><i class="bi bi-trophy me-2 text-danger"></i>Competicoes</h2>
+</div>
+
+{% if competicoes %}
+<div class="row g-4">
+    {% for comp in competicoes %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm h-100 {% if comp.id in inscritos_ids %}border-success border-2{% endif %}">
+            {% if comp.id in inscritos_ids %}
+            <div class="card-ribbon bg-success text-white small text-center py-1">
+                <i class="bi bi-check-circle me-1"></i>Inscrito
+            </div>
+            {% endif %}
+            <div class="card-header bg-dark text-white">
+                <h6 class="mb-0 fw-bold">{{ comp.nome }}</h6>
+            </div>
+            <div class="card-body">
+                {% if comp.descricao %}
+                <p class="text-muted small mb-3">{{ comp.descricao }}</p>
+                {% endif %}
+                <ul class="list-unstyled mb-3 small">
+                    <li class="mb-1">
+                        <i class="bi bi-calendar3 me-2 text-danger"></i>
+                        <strong>Data:</strong> {{ comp.data.strftime('%d/%m/%Y') }}
+                    </li>
+                    {% if comp.local %}
+                    <li class="mb-1"><i class="bi bi-building me-2 text-muted"></i>{{ comp.local }}</li>
+                    {% endif %}
+                    {% if comp.cidade %}
+                    <li class="mb-1"><i class="bi bi-geo-alt me-2 text-muted"></i>{{ comp.cidade }} - {{ comp.estado }}</li>
+                    {% endif %}
+                    <li class="mb-1">
+                        <i class="bi bi-people me-2 text-info"></i>{{ comp.total_inscritos() }} inscrito(s)
+                    </li>
+                </ul>
+
+                <!-- Precos e prazos -->
+                <div class="pricing-box rounded overflow-hidden border" style="font-size:0.88rem;">
+                    {% if comp.prazo_desconto and comp.valor_com_desconto and comp.valor_com_desconto > 0 %}
+                    <div class="d-flex justify-content-between align-items-center px-3 py-2
+                        {% if today <= comp.prazo_desconto %}bg-success text-white{% else %}bg-light text-muted{% endif %}">
+                        <div>
+                            <i class="bi bi-tag-fill me-1"></i>
+                            <strong>Com desconto</strong>
+                            <span class="d-block small opacity-75">ate {{ comp.prazo_desconto.strftime('%d/%m/%Y') }}</span>
+                        </div>
+                        <span class="fs-6 fw-bold">R$ {{ '%.2f'|format(comp.valor_com_desconto) }}</span>
+                    </div>
+                    {% endif %}
+                    {% if comp.valor_inscricao and comp.valor_inscricao > 0 %}
+                    <div class="d-flex justify-content-between align-items-center px-3 py-2
+                        {% if not comp.prazo_desconto or today > comp.prazo_desconto %}bg-dark text-white{% else %}bg-light text-muted{% endif %}">
+                        <div>
+                            <i class="bi bi-tag me-1"></i>
+                            <strong>Sem desconto</strong>
+                            {% if comp.prazo_inscricao %}
+                            <span class="d-block small opacity-75">ate {{ comp.prazo_inscricao.strftime('%d/%m/%Y') }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="fs-6 fw-bold">R$ {{ '%.2f'|format(comp.valor_inscricao) }}</span>
+                    </div>
+                    {% elif not comp.prazo_desconto %}
+                    <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-success text-white">
+                        <span><i class="bi bi-gift me-1"></i><strong>Gratuito</strong></span>
+                        <span class="fs-6 fw-bold">R$ 0,00</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pb-3">
+                {% if comp.id in inscritos_ids %}
+                    <button class="btn btn-success w-100" disabled>
+                        <i class="bi bi-check-circle me-1"></i>Ja inscrito
+                    </button>
+                {% elif comp.prazo_inscricao and comp.prazo_inscricao < today %}
+                    <button class="btn btn-secondary w-100" disabled>
+                        <i class="bi bi-lock me-1"></i>Prazo encerrado
+                    </button>
+                {% else %}
+                    <a href="{{ url_for('inscrever', comp_id=comp.id) }}" class="btn btn-danger w-100">
+                        <i class="bi bi-plus-circle me-1"></i>Inscrever-se
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
+    <h5>Nenhuma competicao disponivel no momento</h5>
+    <p>Aguarde novas competicoes serem anunciadas.</p>
+</div>
+{% endif %}
+{% endblock %}

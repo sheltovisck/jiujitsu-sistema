@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background:#c0392b;padding:30px;text-align:center;">
+      <h1 style="color:#fff;margin:0;font-size:24px;">JJ System</h1>
+      <p style="color:#ffcccc;margin:8px 0 0;">Sistema de Competicoes de Jiu-Jitsu</p>
+    </div>
+    <div style="padding:30px;">
+      <h2 style="color:#222;margin-top:0;">Inscricao Realizada!</h2>
+      <p style="color:#555;line-height:1.6;">
+        Ola, <strong>{{ user.nome_completo or user.username }}</strong>!
+        Sua inscricao foi recebida com sucesso e esta aguardando aprovacao.
+      </p>
+      <div style="background:#f9f9f9;border:1px solid #eee;border-radius:6px;padding:20px;margin:20px 0;">
+        <h3 style="margin:0 0 15px;color:#c0392b;font-size:16px;"><strong>{{ competicao.nome }}</strong></h3>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="color:#888;padding:4px 0;width:120px;">Data:</td>
+            <td style="color:#333;font-weight:bold;">{{ competicao.data.strftime('%d/%m/%Y') }}</td>
+          </tr>
+          {% if competicao.local %}
+          <tr>
+            <td style="color:#888;padding:4px 0;">Local:</td>
+            <td style="color:#333;">{{ competicao.local }}</td>
+          </tr>
+          {% endif %}
+          {% if competicao.cidade %}
+          <tr>
+            <td style="color:#888;padding:4px 0;">Cidade:</td>
+            <td style="color:#333;">{{ competicao.cidade }}{% if competicao.estado %} - {{ competicao.estado }}{% endif %}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td style="color:#888;padding:4px 0;">Sua faixa:</td>
+            <td style="color:#333;">{{ user.faixa or '—' }}{% if user.grau %} {{ user.grau }}o grau{% endif %}</td>
+          </tr>
+          <tr>
+            <td style="color:#888;padding:4px 0;">Categoria:</td>
+            <td style="color:#333;">{{ user.get_categoria_peso() }}</td>
+          </tr>
+        </table>
+      </div>
+      <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:12px 15px;margin-bottom:20px;">
+        <p style="margin:0;color:#856404;font-size:14px;">
+          Sua inscricao esta <strong>pendente de aprovacao</strong>. Voce sera notificado quando for confirmada.
+        </p>
+      </div>
+      <p style="color:#888;font-size:13px;margin-top:30px;border-top:1px solid #eee;padding-top:15px;">
+        JJ System &copy; 2025 - Desenvolvido por Welington Marques
+      </p>
+    </div>
+  </div>
+</body>
+</html>

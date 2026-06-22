@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Bem-vindo - JJ System{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="hero-section text-center text-white py-5 mb-5 rounded-4">
+    <div class="py-4">
+        <h1 class="display-4 fw-bold mb-3">
+            <i class="bi bi-trophy-fill text-warning me-3"></i>JJ System
+        </h1>
+        <p class="lead mb-4">Sistema oficial de cadastro e inscrição para competições de Jiu-Jitsu</p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="{{ url_for('cadastro') }}" class="btn btn-danger btn-lg fw-bold px-4">
+                <i class="bi bi-person-plus me-2"></i>Criar conta grátis
+            </a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg px-4">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Já tenho conta
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Features -->
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm text-center p-4">
+            <div class="feature-icon bg-danger text-white rounded-circle mx-auto mb-3">
+                <i class="bi bi-person-check-fill fs-3"></i>
+            </div>
+            <h5 class="fw-bold">Cadastro Simples</h5>
+            <p class="text-muted">Crie sua conta em minutos com seus dados pessoais e de jiu-jitsu</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm text-center p-4">
+            <div class="feature-icon bg-warning text-dark rounded-circle mx-auto mb-3">
+                <i class="bi bi-calendar2-check-fill fs-3"></i>
+            </div>
+            <h5 class="fw-bold">Inscreva-se Online</h5>
+            <p class="text-muted">Veja as competições disponíveis e faça sua inscrição com poucos cliques</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm text-center p-4">
+            <div class="feature-icon bg-success text-white rounded-circle mx-auto mb-3">
+                <i class="bi bi-diagram-3-fill fs-3"></i>
+            </div>
+            <h5 class="fw-bold">Chaves Automáticas</h5>
+            <p class="text-muted">Categorias e chaves geradas automaticamente por faixa e peso</p>
+        </div>
+    </div>
+</div>
+
+<!-- Próximas Competições -->
+{% if competicoes %}
+<div class="mb-5">
+    <h2 class="fw-bold mb-4"><i class="bi bi-calendar-event me-2 text-danger"></i>Próximas Competições</h2>
+    <div class="row g-4">
+        {% for comp in competicoes %}
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0 fw-bold">{{ comp.nome }}</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><i class="bi bi-calendar3 me-2 text-muted"></i>{{ comp.data.strftime('%d/%m/%Y') }}</p>
+                    {% if comp.local %}
+                    <p class="mb-1"><i class="bi bi-geo-alt me-2 text-muted"></i>{{ comp.local }}</p>
+                    {% endif %}
+                    {% if comp.cidade %}
+                    <p class="mb-2"><i class="bi bi-map me-2 text-muted"></i>{{ comp.cidade }} - {{ comp.estado }}</p>
+                    {% endif %}
+                    <span class="badge bg-success">{{ comp.total_inscritos() }} inscrito(s)</span>
+                </div>
+                <div class="card-footer bg-transparent border-0 pb-3">
+                    <a href="{{ url_for('cadastro') }}" class="btn btn-danger btn-sm w-100">
+                        <i class="bi bi-person-plus me-1"></i>Inscrever-se
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

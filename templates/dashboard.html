@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - JJ System{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Olá, {{ current_user.nome_completo or current_user.username }}! 👋</h2>
+        <p class="text-muted mb-0">Bem-vindo ao seu painel de atleta</p>
+    </div>
+    <a href="{{ url_for('perfil') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-person-gear me-1"></i>Editar perfil
+    </a>
+</div>
+
+<!-- Cards de resumo -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-1 fw-bold text-danger">{{ inscricoes|length }}</div>
+            <div class="text-muted small">Inscrições totais</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-1 fw-bold text-success">{{ inscricoes|selectattr('status','eq','aprovado')|list|length }}</div>
+            <div class="text-muted small">Aprovadas</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-1 fw-bold text-warning">{{ inscricoes|selectattr('status','eq','pendente')|list|length }}</div>
+            <div class="text-muted small">Pendentes</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-1 fw-bold text-info">{{ competicoes_abertas|length }}</div>
+            <div class="text-muted small">Comp. abertas</div>
+        </div>
+    </div>
+</div>
+
+{% if not current_user.perfil_completo() %}
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
+    <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+    <div>
+        <strong>Perfil incompleto!</strong> Preencha todos os dados para poder se inscrever em competições.
+        <a href="{{ url_for('perfil') }}" class="btn btn-warning btn-sm ms-2">
+            <i class="bi bi-pencil me-1"></i>Completar perfil
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Competições abertas -->
+{% if competicoes_abertas %}
+<div class="mb-4">
+    <h4 class="fw-bold mb-3"><i class="bi bi-calendar-event text-danger me-2"></i>Competições abertas para inscrição</h4>
+    <div class="row g-3">
+        {% for comp in competicoes_abertas %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold">{{ comp.nome }}</h6>
+                    <p class="text-muted small mb-1"><i class="bi bi-calendar3 me-1"></i>{{ comp.data.strftime('%d/%m/%Y') }}</p>
+                    {% if comp.cidade %}<p class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>{{ comp.cidade }} - {{ comp.estado }}</p>{% endif %}
+                    {% if comp.prazo_inscricao %}<p class="text-muted small mb-2"><i class="bi bi-clock me-1"></i>Prazo: {{ comp.prazo_inscricao.strftime('%d/%m/%Y') }}</p>{% endif %}
+                    {% if comp.valor_inscricao and comp.valor_inscricao > 0 %}
+                    <span class="badge bg-secondary mb-2">R$ {{ '%.2f'|format(comp.valor_inscricao) }}</span>
+                    {% else %}
+                    <span class="badge bg-success mb-2">Gratuito</span>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent border-0 pb-3">
+                    <a href="{{ url_for('inscrever', comp_id=comp.id) }}" class="btn btn-danger btn-sm w-100">
+                        <i class="bi bi-plus-circle me-1"></i>Inscrever-se
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Minhas inscrições -->
+<div>
+    <h4 class="fw-bold mb-3"><i class="bi bi-clipboard-check text-dark me-2"></i>Minhas inscrições</h4>
+    {% if inscricoes %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Competição</th>
+                    <th>Data</th>
+                    <th>Faixa</th>
+                    <th>Categoria</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for insc in inscricoes %}
+                <tr>
+                    <td class="fw-semibold">{{ insc.competicao.nome }}</td>
+                    <td class="text-muted small">{{ insc.competicao.data.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ insc.faixa_inscricao or '—' }}</td>
+                    <td>{{ insc.categoria_peso or '—' }}</td>
+                    <td>
+                        {% if insc.status == 'aprovado' %}
+                            <span class="badge bg-success"><i class="bi bi-check me-1"></i>Aprovado</span>
+                        {% elif insc.status == 'pendente' %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass me-1"></i>Pendente</span>
+                        {% elif insc.status == 'rejeitado' %}
+                            <span class="badge bg-danger"><i class="bi bi-x me-1"></i>Rejeitado</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Cancelado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            {% if insc.status == 'pendente' %}
+                            <button class="btn btn-outline-primary btn-sm" title="Alterar peso"
+                                data-bs-toggle="modal" data-bs-target="#modalPeso{{ insc.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            {% endif %}
+                            {% if insc.status in ['pendente', 'aprovado'] %}
+                            <form method="POST" action="{{ url_for('cancelar_inscricao', insc_id=insc.id) }}"
+                                  onsubmit="return confirm('Cancelar esta inscrição?')">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-clipboard-x fs-1 d-block mb-3"></i>
+        <p>Você ainda não se inscreveu em nenhuma competição.</p>
+        <a href="{{ url_for('competicoes') }}" class="btn btn-danger">
+            <i class="bi bi-trophy me-1"></i>Ver competições
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modais de edicao de peso -->
+{% for insc in inscricoes %}
+{% if insc.status == 'pendente' %}
+<div class="modal fade" id="modalPeso{{ insc.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title fw-bold"><i class="bi bi-pencil me-2"></i>Alterar Peso</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('editar_peso_inscricao', insc_id=insc.id) }}">
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">{{ insc.competicao.nome }}</p>
+                    <label class="form-label fw-semibold">Novo peso (kg)</label>
+                    <div class="input-group">
+                        <input type="number" name="peso" class="form-control"
+                               value="{{ insc.peso_inscricao or current_user.peso or '' }}"
+                               step="0.1" min="20" max="300" required>
+                        <span class="input-group-text">kg</span>
+                    </div>
+                    <div class="form-text">Categoria atual: <strong>{{ insc.categoria_peso or '—' }}</strong></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% endblock %}

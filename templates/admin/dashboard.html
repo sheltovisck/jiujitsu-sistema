@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Admin - Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-0"><i class="bi bi-speedometer2 me-2 text-danger"></i>Painel Administrativo</h2>
+        <p class="text-muted mb-0">Visão geral do sistema</p>
+    </div>
+</div>
+
+<!-- Cards de métricas -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="metric-icon bg-primary text-white rounded-3"><i class="bi bi-people-fill fs-3"></i></div>
+                <div>
+                    <div class="fs-2 fw-bold">{{ total_alunos }}</div>
+                    <div class="text-muted small">Alunos cadastrados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="metric-icon bg-danger text-white rounded-3"><i class="bi bi-trophy-fill fs-3"></i></div>
+                <div>
+                    <div class="fs-2 fw-bold">{{ total_competicoes }}</div>
+                    <div class="text-muted small">Competições</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="metric-icon bg-success text-white rounded-3"><i class="bi bi-clipboard-check-fill fs-3"></i></div>
+                <div>
+                    <div class="fs-2 fw-bold">{{ total_inscricoes }}</div>
+                    <div class="text-muted small">Inscrições ativas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="metric-icon bg-warning text-dark rounded-3"><i class="bi bi-hourglass-split fs-3"></i></div>
+                <div>
+                    <div class="fs-2 fw-bold">{{ pendentes }}</div>
+                    <div class="text-muted small">Aguardando aprovação</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ações rápidas -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <a href="{{ url_for('admin_alunos') }}" class="card border-0 shadow-sm text-decoration-none text-dark h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-people fs-1 text-primary mb-2 d-block"></i>
+                <h6 class="fw-bold">Gerenciar Alunos</h6>
+                <p class="text-muted small mb-0">Ver todos os atletas cadastrados</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ url_for('admin_competicoes') }}" class="card border-0 shadow-sm text-decoration-none text-dark h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-calendar-plus fs-1 text-danger mb-2 d-block"></i>
+                <h6 class="fw-bold">Gerenciar Competições</h6>
+                <p class="text-muted small mb-0">Criar e editar competições</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ url_for('admin_inscricoes') }}" class="card border-0 shadow-sm text-decoration-none text-dark h-100">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-clipboard-check fs-1 text-success mb-2 d-block"></i>
+                <h6 class="fw-bold">Aprovar Inscrições</h6>
+                <p class="text-muted small mb-0">Gerenciar inscrições pendentes</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Inscrições recentes -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-clock-history me-2"></i>Inscrições Recentes</span>
+        <a href="{{ url_for('admin_inscricoes') }}" class="btn btn-sm btn-outline-light">Ver todas</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Atleta</th>
+                        <th>Competição</th>
+                        <th>Faixa</th>
+                        <th>Categoria</th>
+                        <th>Status</th>
+                        <th class="pe-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for insc in inscricoes_recentes %}
+                    <tr>
+                        <td class="ps-3">
+                            <div class="fw-semibold">{{ insc.aluno.nome_completo or insc.aluno.username }}</div>
+                            <div class="text-muted small">{{ insc.aluno.academia or '—' }}</div>
+                        </td>
+                        <td>{{ insc.competicao.nome }}</td>
+                        <td>{{ insc.faixa_inscricao or '—' }}</td>
+                        <td>{{ insc.categoria_peso or '—' }}</td>
+                        <td>
+                            {% if insc.status == 'aprovado' %}<span class="badge bg-success">Aprovado</span>
+                            {% elif insc.status == 'pendente' %}<span class="badge bg-warning text-dark">Pendente</span>
+                            {% elif insc.status == 'rejeitado' %}<span class="badge bg-danger">Rejeitado</span>
+                            {% else %}<span class="badge bg-secondary">Cancelado</span>{% endif %}
+                        </td>
+                        <td class="pe-3">
+                            {% if insc.status == 'pendente' %}
+                            <form method="POST" action="{{ url_for('admin_atualizar_status', insc_id=insc.id) }}" class="d-inline">
+                                <input type="hidden" name="status" value="aprovado">
+                                <button type="submit" class="btn btn-success btn-sm" title="Aprovar">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin_atualizar_status', insc_id=insc.id) }}" class="d-inline">
+                                <input type="hidden" name="status" value="rejeitado">
+                                <button type="submit" class="btn btn-danger btn-sm" title="Rejeitar">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual Claude Code — Guia para Iniciantes</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2333;
+      --border: #30363d;
+      --accent: #e36209;
+      --accent2: #f78166;
+      --blue: #58a6ff;
+      --green: #3fb950;
+      --purple: #bc8cff;
+      --yellow: #d29922;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --code-bg: #0d1117;
+      --sidebar-w: 260px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      display: flex;
+    }
+
+    /* ── Sidebar ── */
+    nav {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 0 0 2rem;
+      flex-shrink: 0;
+    }
+
+    .nav-logo {
+      padding: 1.4rem 1.4rem 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: .5rem;
+    }
+
+    .nav-logo h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -.3px;
+    }
+
+    .nav-logo span {
+      font-size: .75rem;
+      color: var(--text-muted);
+    }
+
+    nav a {
+      display: block;
+      padding: .38rem 1.4rem;
+      font-size: .82rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+
+    nav a:hover {
+      color: var(--text);
+      background: var(--surface2);
+    }
+
+    nav a.active {
+      color: var(--blue);
+      border-left-color: var(--blue);
+      background: rgba(88,166,255,.08);
+    }
+
+    .nav-section {
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      padding: 1rem 1.4rem .3rem;
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      max-width: 860px;
+      padding: 2.5rem 3rem 5rem;
+      overflow-x: hidden;
+    }
+
+    section {
+      margin-bottom: 3.5rem;
+      scroll-margin-top: 1.5rem;
+    }
+
+    h2 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1rem;
+      padding-bottom: .6rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    h2 .icon { font-size: 1.3rem; }
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--blue);
+      margin: 1.6rem 0 .6rem;
+    }
+
+    h4 {
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--purple);
+      margin: 1.2rem 0 .4rem;
+    }
+
+    p { margin-bottom: .8rem; color: var(--text); }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #1a2332 0%, #0d1117 60%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2.5rem;
+      margin-bottom: 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(227,98,9,.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: .5rem;
+    }
+
+    .hero p {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 540px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(227,98,9,.15);
+      border: 1px solid rgba(227,98,9,.4);
+      color: var(--accent);
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      padding: .18rem .6rem;
+      border-radius: 20px;
+      margin-bottom: .9rem;
+    }
+
+    /* ── Code ── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      overflow-x: auto;
+      margin: .8rem 0 1.2rem;
+      position: relative;
+    }
+
+    pre .lang-tag {
+      position: absolute;
+      top: .5rem; right: .7rem;
+      font-size: .65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    code {
+      font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+      font-size: .82rem;
+      color: var(--green);
+    }
+
+    p code, li code {
+      background: var(--surface2);
+      color: var(--accent2);
+      padding: .1rem .35rem;
+      border-radius: 4px;
+      font-size: .8rem;
+    }
+
+    /* ── Cards ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem;
+      transition: border-color .2s, transform .2s;
+    }
+
+    .card:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+    }
+
+    .card .card-icon { font-size: 1.6rem; margin-bottom: .5rem; }
+    .card h4 { margin: 0 0 .4rem; color: #fff; font-size: .9rem; }
+    .card p { font-size: .8rem; color: var(--text-muted); margin: 0; }
+
+    /* ── File tree ── */
+    .tree {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: .82rem;
+      line-height: 1.9;
+      margin: .8rem 0 1.4rem;
+    }
+
+    .tree .dir { color: var(--blue); font-weight: 600; }
+    .tree .file-important { color: var(--accent); }
+    .tree .file-config { color: var(--purple); }
+    .tree .file-normal { color: var(--text-muted); }
+    .tree .comment { color: #444c56; margin-left: .5rem; }
+
+    /* ── Command table ── */
+    .cmd-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: .8rem 0 1.4rem;
+      font-size: .84rem;
+    }
+
+    .cmd-table th {
+      text-align: left;
+      padding: .5rem .9rem;
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cmd-table td {
+      padding: .55rem .9rem;
+      border-bottom: 1px solid rgba(48,54,61,.5);
+      vertical-align: top;
+    }
+
+    .cmd-table tr:last-child td { border-bottom: none; }
+
+    .cmd-table td:first-child {
+      font-family: "JetBrains Mono", Consolas, monospace;
+      color: var(--green);
+      white-space: nowrap;
+      font-size: .8rem;
+    }
+
+    .cmd-table td:last-child { color: var(--text-muted); font-size: .82rem; }
+
+    /* ── Callouts ── */
+    .callout {
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin: 1rem 0 1.4rem;
+      border-left: 4px solid;
+      font-size: .87rem;
+    }
+
+    .callout.tip { background: rgba(63,185,80,.08); border-color: var(--green); }
+    .callout.warn { background: rgba(210,153,34,.08); border-color: var(--yellow); }
+    .callout.info { background: rgba(88,166,255,.08); border-color: var(--blue); }
+    .callout.danger { background: rgba(247,129,102,.08); border-color: var(--accent2); }
+
+    .callout strong { display: block; margin-bottom: .3rem; }
+    .callout.tip strong { color: var(--green); }
+    .callout.warn strong { color: var(--yellow); }
+    .callout.info strong { color: var(--blue); }
+    .callout.danger strong { color: var(--accent2); }
+
+    /* ── Steps ── */
+    .steps { counter-reset: step; list-style: none; margin: .8rem 0 1.4rem; }
+
+    .steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 1rem;
+      margin-bottom: .9rem;
+      align-items: flex-start;
+    }
+
+    .steps li::before {
+      content: counter(step);
+      background: var(--blue);
+      color: #000;
+      font-weight: 700;
+      font-size: .75rem;
+      min-width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: .12rem;
+    }
+
+    /* ── Keyboard ── */
+    kbd {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: .1rem .45rem;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: .75rem;
+      color: var(--text);
+    }
+
+    /* ── Tags ── */
+    .tag {
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 600;
+      padding: .1rem .45rem;
+      border-radius: 20px;
+      margin-left: .3rem;
+    }
+
+    .tag.new { background: rgba(63,185,80,.15); color: var(--green); }
+    .tag.important { background: rgba(227,98,9,.15); color: var(--accent); }
+
+    /* ── List ── */
+    ul, ol { padding-left: 1.4rem; margin-bottom: .8rem; }
+    li { margin-bottom: .3rem; color: var(--text); font-size: .9rem; }
+    li strong { color: #fff; }
+
+    /* ── Divider ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      nav { width: 100%; height: auto; position: static; }
+      main { padding: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<nav>
+  <div class="nav-logo">
+    <h1>Claude Code</h1>
+    <span>Guia para Iniciantes</span>
+  </div>
+
+  <div class="nav-section">Início</div>
+  <a href="#intro">O que é Claude Code</a>
+  <a href="#install">Instalação</a>
+
+  <div class="nav-section">Arquivos Principais</div>
+  <a href="#claude-md">CLAUDE.md</a>
+  <a href="#settings">settings.json</a>
+  <a href="#memory">Sistema de Memória</a>
+
+  <div class="nav-section">Organização</div>
+  <a href="#estrutura">Estrutura de Pastas</a>
+  <a href="#projetos">Por Tipo de Projeto</a>
+
+  <div class="nav-section">Uso Diário</div>
+  <a href="#comandos">Comandos Slash</a>
+  <a href="#atalhos">Atalhos de Teclado</a>
+  <a href="#permissoes">Permissões</a>
+
+  <div class="nav-section">Boas Práticas</div>
+  <a href="#prompts">Escrever Prompts</a>
+  <a href="#contexto">Gerenciar Contexto</a>
+  <a href="#dicas">Dicas Avançadas</a>
+  <a href="#erros">Erros Comuns</a>
+</nav>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="badge">v2026 · Guia Completo</div>
+    <h1>Claude Code para Iniciantes</h1>
+    <p>Tudo que você precisa saber para começar a usar o Claude Code com eficiência — arquivos, comandos, organização e boas práticas.</p>
+  </div>
+
+  <!-- ── 1. Introdução ── -->
+  <section id="intro">
+    <h2><span class="icon">⚡</span> O que é Claude Code</h2>
+    <p>Claude Code é a CLI oficial da Anthropic que integra o modelo Claude diretamente no seu terminal, editor de código e fluxo de trabalho. Ele lê os arquivos do seu projeto, executa comandos, edita código e mantém memória entre sessões.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🖥️</div>
+        <h4>CLI (Terminal)</h4>
+        <p>Acesso via <code>claude</code> no terminal. Principal forma de uso, sem interface gráfica.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🖱️</div>
+        <h4>Desktop App</h4>
+        <p>Aplicativo nativo para Windows e Mac com interface visual integrada.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h4>IDE Extensions</h4>
+        <p>Plugins para VS Code e JetBrains — Claude dentro do editor.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌐</div>
+        <h4>Web App</h4>
+        <p>Acesso via <code>claude.ai/code</code> no navegador, sem instalação.</p>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <strong>Modelos Disponíveis (2026)</strong>
+      Opus 4.7 · Sonnet 4.6 (padrão) · Haiku 4.5 — use <code>/model</code> para trocar. O <strong>Fast Mode</strong> usa Opus com saída mais rápida, ativado com <code>/fast</code>.
+    </div>
+  </section>
+
+  <!-- ── 2. Instalação ── -->
+  <section id="install">
+    <h2><span class="icon">📦</span> Instalação</h2>
+
+    <ol class="steps">
+      <li>Instale o Node.js 18+ (necessário para o pacote npm)</li>
+      <li>
+        Execute no terminal:
+        <pre><code>npm install -g @anthropic-ai/claude-code</code><span class="lang-tag">bash</span></pre>
+      </li>
+      <li>
+        Autentique com sua conta Anthropic:
+        <pre><code>claude auth login</code><span class="lang-tag">bash</span></pre>
+      </li>
+      <li>
+        Inicie em qualquer diretório de projeto:
+        <pre><code>cd meu-projeto
+claude</code><span class="lang-tag">bash</span></pre>
+      </li>
+    </ol>
+
+    <div class="callout tip">
+      <strong>Dica de primeiro uso</strong>
+      Na primeira sessão de um projeto novo, peça ao Claude para executar <code>/init</code> — ele vai ler o código e gerar um <code>CLAUDE.md</code> automaticamente.
+    </div>
+  </section>
+
+  <!-- ── 3. CLAUDE.md ── -->
+  <section id="claude-md">
+    <h2><span class="icon">📄</span> CLAUDE.md — O Arquivo Mais Importante</h2>
+    <p>O <code>CLAUDE.md</code> é lido automaticamente em toda sessão. É onde você ensina ao Claude como funciona seu projeto — convenções, comandos de build, arquitetura, regras de estilo.</p>
+
+    <h3>Onde colocar</h3>
+    <div class="tree">
+      <span class="dir">projeto/</span><br>
+      ├── <span class="file-important">CLAUDE.md</span>          <span class="comment">← raiz do projeto (principal)</span><br>
+      ├── <span class="file-important">CLAUDE.local.md</span>    <span class="comment">← suas preferências pessoais (não commitar)</span><br>
+      ├── src/<br>
+      │   └── <span class="file-important">CLAUDE.md</span>      <span class="comment">← regras específicas para src/</span><br>
+      └── docs/<br>
+          └── <span class="file-important">CLAUDE.md</span>      <span class="comment">← regras para documentação</span>
+    </div>
+
+    <h3>Estrutura recomendada</h3>
+    <pre><code># Nome do Projeto
+
+## Visão Geral
+Breve descrição do que o projeto faz e sua arquitetura.
+
+## Comandos Essenciais
+```bash
+npm run dev      # servidor de desenvolvimento
+npm run build    # build de produção
+npm run test     # rodar testes
+npm run lint     # verificar código
+```
+
+## Arquitetura
+- src/components/  → componentes React reutilizáveis
+- src/api/         → chamadas à API externa
+- src/utils/       → funções utilitárias puras
+
+## Convenções de Código
+- TypeScript strict mode ativado
+- Componentes em PascalCase, funções em camelCase
+- Sem comentários desnecessários — nomes claros no código
+- Testes unitários para toda lógica de negócio
+
+## Variáveis de Ambiente
+- DATABASE_URL → string de conexão PostgreSQL
+- API_KEY       → chave da API externa (nunca commitar)
+
+## O que NÃO fazer
+- Não usar `any` no TypeScript
+- Não commitar arquivos .env
+- Não criar abstrações desnecessárias
+</code><span class="lang-tag">markdown</span></pre>
+
+    <div class="callout warn">
+      <strong>CLAUDE.local.md não deve ir para o git</strong>
+      Adicione <code>CLAUDE.local.md</code> ao <code>.gitignore</code>. Use-o para preferências pessoais que não precisam ser compartilhadas com o time.
+    </div>
+  </section>
+
+  <!-- ── 4. settings.json ── -->
+  <section id="settings">
+    <h2><span class="icon">⚙️</span> settings.json — Configuração</h2>
+    <p>Controla permissões, hooks, variáveis de ambiente e comportamentos automáticos. Existe em três níveis, do mais específico ao mais geral:</p>
+
+    <div class="tree">
+      <span class="dir">Nível 1 — Projeto</span>   .claude/settings.json<br>
+      <span class="dir">Nível 2 — Local</span>      .claude/settings.local.json<br>
+      <span class="dir">Nível 3 — Usuário</span>    ~/.claude/settings.json
+    </div>
+
+    <h3>Exemplo de settings.json básico</h3>
+    <pre><code>{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Read(**/*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
+</code><span class="lang-tag">json</span></pre>
+
+    <h3>Hooks — Automações</h3>
+    <p>Hooks executam comandos shell automaticamente em resposta a eventos do Claude Code. São configurados no <code>settings.json</code>.</p>
+
+    <pre><code>{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Hook] Executando comando bash...'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run lint --silent"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Sessão encerrada em: $(date)' >> .claude/sessoes.log"
+          }
+        ]
+      }
+    ]
+  }
+}
+</code><span class="lang-tag">json</span></pre>
+
+    <div class="callout tip">
+      <strong>Use /fewer-permission-prompts</strong>
+      O skill <code>/fewer-permission-prompts</code> analisa seu histórico e adiciona automaticamente ao <code>settings.json</code> os comandos que você permite com frequência, reduzindo interrupções.
+    </div>
+  </section>
+
+  <!-- ── 5. Memória ── -->
+  <section id="memory">
+    <h2><span class="icon">🧠</span> Sistema de Memória</h2>
+    <p>Claude Code mantém uma memória persistente entre sessões em <code>~/.claude/projects/[projeto]/memory/</code>. Isso permite que ele lembre suas preferências, contexto do projeto e padrões de trabalho.</p>
+
+    <h3>Tipos de Memória</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">👤</div>
+        <h4>user</h4>
+        <p>Seu papel, nível de experiência, preferências de comunicação.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">💬</div>
+        <h4>feedback</h4>
+        <p>Correções e validações de abordagem — o que fazer e o que evitar.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🗂️</div>
+        <h4>project</h4>
+        <p>Contexto do projeto: decisões, metas, prazos, motivações.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <h4>reference</h4>
+        <p>Onde encontrar informações externas (dashboards, tickets, docs).</p>
+      </div>
+    </div>
+
+    <h3>Estrutura de um arquivo de memória</h3>
+    <pre><code>---
+name: preferencias-codigo
+description: Como o usuário prefere que o código seja escrito
+metadata:
+  type: feedback
+---
+
+Não adicionar comentários óbvios — o código deve ser autoexplicativo.
+
+**Por quê:** O usuário considera comentários redundantes como ruído.
+**Como aplicar:** Só comentar quando o "porquê" não está claro pelo código.
+</code><span class="lang-tag">markdown</span></pre>
+
+    <h3>MEMORY.md — O índice</h3>
+    <p>O arquivo <code>MEMORY.md</code> é o índice de todas as memórias. Ele é carregado automaticamente em toda sessão:</p>
+    <pre><code>- [Perfil do usuário](user_profile.md) — desenvolvedor Python, iniciante em React
+- [Preferências de código](feedback_code.md) — sem comentários, TypeScript strict
+- [Contexto do projeto](project_context.md) — sistema de cadastro, prazo em julho
+</code><span class="lang-tag">markdown</span></pre>
+
+    <div class="callout info">
+      <strong>Pedindo ao Claude para lembrar algo</strong>
+      Basta dizer: <em>"Lembre-se de que prefiro funções pequenas e focadas"</em> ou <em>"Salve na memória que usamos PostgreSQL neste projeto"</em>.
+    </div>
+  </section>
+
+  <!-- ── 6. Estrutura de Pastas ── -->
+  <section id="estrutura">
+    <h2><span class="icon">📁</span> Estrutura de Pastas</h2>
+
+    <h3>Dentro do projeto</h3>
+    <div class="tree">
+      <span class="dir">meu-projeto/</span><br>
+      ├── <span class="file-important">CLAUDE.md</span>                  <span class="comment">← instruções para o Claude</span><br>
+      ├── <span class="file-important">CLAUDE.local.md</span>            <span class="comment">← preferências pessoais (no .gitignore)</span><br>
+      ├── <span class="dir">.claude/</span><br>
+      │   ├── <span class="file-config">settings.json</span>            <span class="comment">← permissões e hooks do projeto</span><br>
+      │   └── <span class="file-config">settings.local.json</span>      <span class="comment">← sobrescritas locais (no .gitignore)</span><br>
+      ├── src/<br>
+      ├── tests/<br>
+      └── ...
+    </div>
+
+    <h3>Pasta global do usuário (~/.claude/)</h3>
+    <div class="tree">
+      <span class="dir">~/.claude/</span><br>
+      ├── <span class="file-config">settings.json</span>                 <span class="comment">← configurações globais</span><br>
+      ├── <span class="file-config">keybindings.json</span>             <span class="comment">← atalhos personalizados</span><br>
+      ├── <span class="file-config">CLAUDE.md</span>                    <span class="comment">← instruções globais para todos projetos</span><br>
+      └── <span class="dir">projects/</span><br>
+          └── <span class="dir">[nome-do-projeto]/</span><br>
+              └── <span class="dir">memory/</span><br>
+                  ├── <span class="file-important">MEMORY.md</span>     <span class="comment">← índice de memórias</span><br>
+                  ├── user_profile.md<br>
+                  ├── feedback_code.md<br>
+                  └── project_context.md
+    </div>
+
+    <div class="callout warn">
+      <strong>O que colocar no .gitignore</strong>
+      <ul style="margin:.3rem 0 0 1rem">
+        <li>CLAUDE.local.md</li>
+        <li>.claude/settings.local.json</li>
+        <li>Arquivos .env (nunca commitar segredos)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ── 7. Por Tipo de Projeto ── -->
+  <section id="projetos">
+    <h2><span class="icon">🏗️</span> Organização por Tipo de Projeto</h2>
+
+    <h3>Projeto Web (React/Vue/Next.js)</h3>
+    <pre><code># CLAUDE.md
+
+## Stack
+- Next.js 14, TypeScript, Tailwind CSS
+- Banco: PostgreSQL via Prisma
+
+## Comandos
+- `npm run dev`     → dev server (http://localhost:3000)
+- `npm run build`   → build produção
+- `npm run test`    → Jest + Testing Library
+
+## Estrutura
+- app/          → rotas (App Router)
+- components/   → UI reutilizável
+- lib/          → lógica de negócio e utilitários
+- prisma/       → schema e migrations
+
+## Convenções
+- Componentes: PascalCase
+- Hooks customizados: useCamelCase
+- Server Components por padrão, Client Components com 'use client'
+</code><span class="lang-tag">markdown</span></pre>
+
+    <h3>Projeto Python / Backend</h3>
+    <pre><code># CLAUDE.md
+
+## Stack
+- Python 3.12, FastAPI, SQLAlchemy, Alembic
+
+## Ambiente
+- `python -m venv .venv && source .venv/bin/activate`
+- `pip install -r requirements.txt`
+- `uvicorn main:app --reload`
+
+## Testes
+- `pytest -v`                  → todos os testes
+- `pytest tests/unit/ -v`      → somente unitários
+
+## Estrutura
+- app/models/    → modelos SQLAlchemy
+- app/routes/    → endpoints FastAPI
+- app/services/  → lógica de negócio
+- tests/         → testes com pytest
+</code><span class="lang-tag">markdown</span></pre>
+
+    <h3>Monorepo</h3>
+    <pre><code># CLAUDE.md (raiz)
+
+## Estrutura
+- packages/api/      → backend Node.js
+- packages/web/      → frontend React
+- packages/shared/   → tipos e utilidades compartilhados
+
+## Comandos (executar na raiz)
+- `npm run dev`       → inicia todos os pacotes
+- `npm run build`     → build de tudo
+- `npm run test`      → testa todos os pacotes
+
+## Regras Globais
+- Imports do shared: `@company/shared`
+- Versões de pacotes sincronizadas via changesets
+</code><span class="lang-tag">markdown</span></pre>
+  </section>
+
+  <!-- ── 8. Comandos ── -->
+  <section id="comandos">
+    <h2><span class="icon">💻</span> Comandos Slash Essenciais</h2>
+
+    <h3>Gerenciamento de Sessão</h3>
+    <table class="cmd-table">
+      <thead>
+        <tr><th>Comando</th><th>Descrição</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>/help</td><td>Lista todos os comandos disponíveis</td></tr>
+        <tr><td>/clear</td><td>Limpa o contexto da conversa atual</td></tr>
+        <tr><td>/compact</td><td>Comprime o contexto mantendo o essencial</td></tr>
+        <tr><td>/model</td><td>Troca o modelo Claude usado na sessão</td></tr>
+        <tr><td>/fast</td><td>Ativa Fast Mode (Opus mais rápido)</td></tr>
+        <tr><td>/config</td><td>Abre configurações interativas</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Projeto e Código</h3>
+    <table class="cmd-table">
+      <thead>
+        <tr><th>Comando</th><th>Descrição</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>/init</td><td>Lê o projeto e gera CLAUDE.md automaticamente</td></tr>
+        <tr><td>/review</td><td>Faz code review do diff atual ou de um PR</td></tr>
+        <tr><td>/security-review</td><td>Revisão de segurança das mudanças pendentes</td></tr>
+        <tr><td>/run</td><td>Inicia a aplicação e verifica funcionamento</td></tr>
+        <tr><td>/verify</td><td>Verifica se uma mudança funciona corretamente</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Memória e Contexto</h3>
+    <table class="cmd-table">
+      <thead>
+        <tr><th>Comando</th><th>Descrição</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>/consolidate-memory</td><td>Reorganiza e remove duplicatas da memória</td></tr>
+        <tr><td>/fewer-permission-prompts</td><td>Adiciona permissões frequentes ao settings.json</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Criação de Documentos</h3>
+    <table class="cmd-table">
+      <thead>
+        <tr><th>Comando</th><th>Descrição</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>/docx</td><td>Cria ou edita arquivos Word (.docx)</td></tr>
+        <tr><td>/xlsx</td><td>Cria ou edita planilhas Excel (.xlsx)</td></tr>
+        <tr><td>/pptx</td><td>Cria apresentações PowerPoint (.pptx)</td></tr>
+        <tr><td>/pdf</td><td>Manipula arquivos PDF</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Agendamento e Automação</h3>
+    <table class="cmd-table">
+      <thead>
+        <tr><th>Comando</th><th>Descrição</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>/loop [intervalo] /cmd</td><td>Executa um comando repetidamente (ex: /loop 5m /review)</td></tr>
+        <tr><td>/schedule</td><td>Cria tarefas agendadas com cron</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── 9. Atalhos ── -->
+  <section id="atalhos">
+    <h2><span class="icon">⌨️</span> Atalhos de Teclado</h2>
+
+    <table class="cmd-table">
+      <thead>
+        <tr><th>Atalho</th><th>Ação</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><kbd>Enter</kbd></td>
+          <td>Envia a mensagem</td>
+        </tr>
+        <tr>
+          <td><kbd>Shift</kbd>+<kbd>Enter</kbd></td>
+          <td>Nova linha sem enviar (mensagens multilinha)</td>
+        </tr>
+        <tr>
+          <td><kbd>↑</kbd> / <kbd>↓</kbd></td>
+          <td>Navega pelo histórico de mensagens</td>
+        </tr>
+        <tr>
+          <td><kbd>Ctrl</kbd>+<kbd>C</kbd></td>
+          <td>Cancela a resposta atual</td>
+        </tr>
+        <tr>
+          <td><kbd>Ctrl</kbd>+<kbd>D</kbd></td>
+          <td>Encerra a sessão (equivale a /exit)</td>
+        </tr>
+        <tr>
+          <td><kbd>Ctrl</kbd>+<kbd>L</kbd></td>
+          <td>Limpa a tela do terminal</td>
+        </tr>
+        <tr>
+          <td><kbd>Esc</kbd></td>
+          <td>Interrompe a execução em andamento</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout tip">
+      <strong>Personalizando atalhos</strong>
+      Use o skill <code>/keybindings-help</code> para adicionar atalhos personalizados ou reconfigurar os existentes em <code>~/.claude/keybindings.json</code>.
+    </div>
+  </section>
+
+  <!-- ── 10. Permissões ── -->
+  <section id="permissoes">
+    <h2><span class="icon">🔒</span> Sistema de Permissões</h2>
+    <p>Claude Code pede confirmação antes de executar ações potencialmente destrutivas. Você controla quais são aprovadas automaticamente.</p>
+
+    <h3>Modos de Permissão</h3>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🔐</div>
+        <h4>Default</h4>
+        <p>Pede confirmação para ações que afetam arquivos ou executam comandos.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <h4>Auto-approve</h4>
+        <p>Aprova automaticamente ações seguras (leitura, comandos permitidos).</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <h4>Yolo / Autônomo</h4>
+        <p>Executa tudo sem pedir confirmação — use com cautela em projetos novos.</p>
+      </div>
+    </div>
+
+    <h3>Padrões de permissão no settings.json</h3>
+    <pre><code>{
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(npm run dev)",
+      "Bash(npm run test)",
+      "Bash(npm run lint)",
+      "Read(**/*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(DROP TABLE *)"
+    ]
+  }
+}
+</code><span class="lang-tag">json</span></pre>
+
+    <div class="callout danger">
+      <strong>Ações que sempre pedem confirmação</strong>
+      Push para repositórios remotos, exclusão de arquivos, reset --hard, operações em banco de dados produção, e qualquer comando que afete sistemas externos.
+    </div>
+  </section>
+
+  <!-- ── 11. Escrever Prompts ── -->
+  <section id="prompts">
+    <h2><span class="icon">✍️</span> Como Escrever Bons Prompts</h2>
+
+    <h3>Seja específico sobre o contexto</h3>
+    <div class="card-grid">
+      <div class="card" style="border-color:#f78166">
+        <h4 style="color:#f78166">❌ Vago</h4>
+        <p style="font-size:.85rem">"Arruma o bug no login"</p>
+      </div>
+      <div class="card" style="border-color:#3fb950">
+        <h4 style="color:#3fb950">✅ Específico</h4>
+        <p style="font-size:.85rem">"Em <code>src/auth/login.ts:47</code>, a função <code>validateToken</code> retorna <code>undefined</code> quando o JWT expirou, mas deveria lançar <code>TokenExpiredError</code>. Corrija isso."</p>
+      </div>
+    </div>
+
+    <h3>Tipos de pedido e como formular</h3>
+
+    <h4>Para correção de bugs</h4>
+    <pre><code>O teste em tests/auth.test.ts linha 23 está falhando com:
+TypeError: Cannot read property 'id' of undefined
+
+O erro ocorre em src/middleware/auth.ts:15 quando req.user
+não está definido. Investigue a causa raiz e corrija.</code></pre>
+
+    <h4>Para novas funcionalidades</h4>
+    <pre><code>Adicione paginação ao endpoint GET /api/products.
+- Parâmetros: ?page=1&limit=20 (padrão: page=1, limit=20)
+- Retorno: { data: [...], total: number, page: number, pages: number }
+- Siga o padrão dos outros endpoints em src/routes/
+- Adicione testes em tests/routes/products.test.ts</code></pre>
+
+    <h4>Para refatoração</h4>
+    <pre><code>Em src/utils/helpers.ts, a função formatDate é chamada em
+12 lugares diferentes com lógica duplicada. Extraia a lógica
+comum para uma função reutilizável, mas não altere o comportamento.</code></pre>
+
+    <div class="callout tip">
+      <strong>Inclua localização exata</strong>
+      Sempre que possível, inclua nome do arquivo e número de linha. Isso reduz o tempo que o Claude gasta procurando e aumenta a precisão da resposta.
+    </div>
+
+    <h3>Comandos úteis no prompt</h3>
+    <table class="cmd-table">
+      <thead>
+        <tr><th>Frase</th><th>Efeito</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>"não explique o código"</td><td>Resposta mais direta, sem explicações longas</td></tr>
+        <tr><td>"não adicione comentários"</td><td>Claude não adiciona comentários no código</td></tr>
+        <tr><td>"só leia, não edite"</td><td>Claude apenas analisa sem modificar</td></tr>
+        <tr><td>"liste os arquivos relevantes"</td><td>Útil para explorar antes de editar</td></tr>
+        <tr><td>"faça um plano antes de executar"</td><td>Claude apresenta a abordagem para aprovação</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── 12. Contexto ── -->
+  <section id="contexto">
+    <h2><span class="icon">📊</span> Gerenciar Contexto</h2>
+    <p>O contexto da conversa tem um limite. Sessões longas ficam lentas e mais caras. Gerencie proativamente.</p>
+
+    <h3>Quando e como limpar</h3>
+    <ul>
+      <li>Use <code>/clear</code> ao trocar de tarefa completamente</li>
+      <li>Use <code>/compact</code> quando o contexto está grande mas a conversa ainda é relevante</li>
+      <li>O sistema comprime automaticamente quando necessário — o trabalho não é perdido</li>
+    </ul>
+
+    <h3>Boas práticas de contexto</h3>
+    <ul>
+      <li><strong>Uma tarefa por sessão</strong> — evite misturar bugs, features e refatorações</li>
+      <li><strong>Seja cirúrgico</strong> — "edite apenas o arquivo X" evita que Claude leia tudo</li>
+      <li><strong>Use CLAUDE.md</strong> — não repita contexto a cada sessão; coloque no arquivo</li>
+      <li><strong>Referência por caminho</strong> — "veja src/api/users.ts" é mais eficiente que colar o código</li>
+    </ul>
+
+    <div class="callout info">
+      <strong>Cache de prompts</strong>
+      O cache de prompts tem TTL de 5 minutos. Se sua sessão ficou inativa por mais de 5 minutos, o Claude paga o custo de reprocessar o contexto. Prefira sessões contínuas e ativas para economia.
+    </div>
+  </section>
+
+  <!-- ── 13. Dicas Avançadas ── -->
+  <section id="dicas">
+    <h2><span class="icon">🚀</span> Dicas Avançadas</h2>
+
+    <h3>Combine ferramentas para tarefas complexas</h3>
+    <pre><code># Peça ao Claude para fazer tudo em sequência:
+"1. Leia o schema em prisma/schema.prisma
+ 2. Crie o modelo User com os campos necessários
+ 3. Gere a migration com: npx prisma migrate dev --name add-user
+ 4. Adicione o endpoint POST /api/users em src/routes/users.ts
+ 5. Escreva os testes em tests/routes/users.test.ts"</code></pre>
+
+    <h3>Use o modo plan antes de grandes mudanças</h3>
+    <pre><code>"Antes de qualquer edição, liste todos os arquivos que serão
+modificados e descreva as mudanças. Aguarde minha confirmação."</code></pre>
+
+    <h3>Subagentes para tarefas paralelas</h3>
+    <pre><code>"Execute duas buscas em paralelo:
+1. Encontre todos os usos de `deprecated_function` no código
+2. Verifique se há testes cobrindo os arquivos que a usam"</code></pre>
+
+    <h3>Integração com git</h3>
+    <pre><code># Peça para fazer commits bem formatados:
+"Faça commit das mudanças com uma mensagem no formato Conventional Commits"
+
+# Revisão antes de push:
+"Revise o diff atual e diga se está pronto para PR"</code></pre>
+
+    <h3>MCP Servers — Expandir Capacidades</h3>
+    <p>Model Context Protocol (MCP) permite conectar Claude Code a ferramentas externas como Slack, Linear, GitHub, banco de dados, e mais.</p>
+
+    <pre><code># Adicionar um MCP server ao settings.json:
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+</code><span class="lang-tag">json</span></pre>
+  </section>
+
+  <!-- ── 14. Erros Comuns ── -->
+  <section id="erros">
+    <h2><span class="icon">⚠️</span> Erros Comuns e Como Evitar</h2>
+
+    <h3>1. CLAUDE.md vazio ou ausente</h3>
+    <div class="callout warn">
+      <strong>Problema</strong>
+      Sem CLAUDE.md, o Claude não conhece as convenções do projeto e pode gerar código fora do padrão.
+      <br><br>
+      <strong>Solução:</strong> Execute <code>/init</code> no início de todo projeto novo. Atualize o CLAUDE.md quando a arquitetura mudar.
+    </div>
+
+    <h3>2. Dar tarefas grandes demais de uma vez</h3>
+    <div class="callout warn">
+      <strong>Problema</strong>
+      "Refatore todo o sistema de auth" pode gerar mudanças incorretas em cascata.
+      <br><br>
+      <strong>Solução:</strong> Quebre em partes menores. "Primeiro só o middleware, depois os controllers, depois os testes."
+    </div>
+
+    <h3>3. Não verificar as mudanças</h3>
+    <div class="callout danger">
+      <strong>Problema</strong>
+      Confiar que o Claude sempre acerta sem revisar as edições.
+      <br><br>
+      <strong>Solução:</strong> Sempre faça <code>git diff</code> antes de commitar. Use <code>/verify</code> para confirmar que features funcionam.
+    </div>
+
+    <h3>4. Commitar segredos</h3>
+    <div class="callout danger">
+      <strong>Problema</strong>
+      O Claude pode sugerir usar variáveis de ambiente mas você commita o .env por acidente.
+      <br><br>
+      <strong>Solução:</strong> Sempre tenha .env no .gitignore. Nunca cole credenciais reais no chat com Claude.
+    </div>
+
+    <h3>5. Sessão longa sem gerenciar contexto</h3>
+    <div class="callout warn">
+      <strong>Problema</strong>
+      Contexto gigante aumenta custos e reduz precisão das respostas.
+      <br><br>
+      <strong>Solução:</strong> Use <code>/compact</code> regularmente. Use <code>/clear</code> ao trocar de tarefa.
+    </div>
+
+    <h3>6. Ignorar o sistema de permissões</h3>
+    <div class="callout warn">
+      <strong>Problema</strong>
+      Aprovar tudo sem ler pode deixar o Claude executar comandos destrutivos.
+      <br><br>
+      <strong>Solução:</strong> Leia sempre o que está sendo executado. Configure o <code>deny</code> no settings.json para bloquear comandos perigosos.
+    </div>
+
+    <hr />
+
+    <div style="text-align:center; padding: 2rem 0; color: var(--text-muted); font-size: .85rem;">
+      <p>Manual criado com Claude Code Sonnet 4.6 · Maio 2026</p>
+      <p style="margin-top:.3rem">Para reportar problemas: <a href="https://github.com/anthropics/claude-code/issues" style="color:var(--blue)">github.com/anthropics/claude-code/issues</a></p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll("section[id]");
+  const links = document.querySelectorAll("nav a");
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove("active"));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add("active");
+      }
+    });
+  }, { rootMargin: "-30% 0px -65% 0px" });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

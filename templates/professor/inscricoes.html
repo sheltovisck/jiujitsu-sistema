@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Professor - Inscricoes{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-0"><i class="bi bi-clipboard-check me-2 text-success"></i>Aprovar Inscricoes</h2>
+        <p class="text-muted mb-0">Gerencie as inscricoes dos alunos</p>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="pendente" {% if status_filtro == 'pendente' %}selected{% endif %}>Pendentes</option>
+                    <option value="aprovado" {% if status_filtro == 'aprovado' %}selected{% endif %}>Aprovadas</option>
+                    <option value="rejeitado" {% if status_filtro == 'rejeitado' %}selected{% endif %}>Rejeitadas</option>
+                    <option value="todos" {% if status_filtro == 'todos' %}selected{% endif %}>Todas</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold mb-1">Competicao</label>
+                <select name="comp" class="form-select form-select-sm">
+                    <option value="">Todas as competicoes</option>
+                    {% for comp in competicoes %}
+                    <option value="{{ comp.id }}" {% if comp_filtro == comp.id|string %}selected{% endif %}>{{ comp.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-dark btn-sm w-100">
+                    <i class="bi bi-funnel me-1"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabela -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">Atleta</th>
+                        <th>Competicao</th>
+                        <th>Faixa</th>
+                        <th>Categoria</th>
+                        <th>Status</th>
+                        <th class="pe-3 text-center">Acoes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for insc in inscricoes %}
+                    <tr>
+                        <td class="ps-3">
+                            <div class="fw-semibold">{{ insc.aluno.nome_completo or insc.aluno.username }}</div>
+                            <div class="text-muted small">{{ insc.aluno.academia or '—' }}</div>
+                        </td>
+                        <td>{{ insc.competicao.nome }}</td>
+                        <td class="small">{{ insc.faixa_inscricao or '—' }}</td>
+                        <td class="small">{{ insc.categoria_peso or '—' }}</td>
+                        <td>
+                            {% if insc.status == 'aprovado' %}<span class="badge bg-success">Aprovado</span>
+                            {% elif insc.status == 'pendente' %}<span class="badge bg-warning text-dark">Pendente</span>
+                            {% elif insc.status == 'rejeitado' %}<span class="badge bg-danger">Rejeitado</span>
+                            {% else %}<span class="badge bg-secondary">Cancelado</span>{% endif %}
+                        </td>
+                        <td class="pe-3 text-center">
+                            {% if insc.status == 'pendente' %}
+                            <form method="POST" action="{{ url_for('professor_atualizar_status', insc_id=insc.id) }}" class="d-inline">
+                                <input type="hidden" name="status" value="aprovado">
+                                <button type="submit" class="btn btn-success btn-sm" title="Aprovar">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('professor_atualizar_status', insc_id=insc.id) }}" class="d-inline">
+                                <input type="hidden" name="status" value="rejeitado">
+                                <button type="submit" class="btn btn-danger btn-sm" title="Rejeitar">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center py-5 text-muted">
+                        <i class="bi bi-clipboard fs-1 d-block mb-2"></i>Nenhuma inscricao encontrada.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Entrar - JJ System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <div class="card border-0 shadow">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="login-icon bg-dark text-white rounded-circle mx-auto mb-3">
+                        <i class="bi bi-person-fill fs-2"></i>
+                    </div>
+                    <h3 class="fw-bold">Entrar</h3>
+                    <p class="text-muted small">Acesse sua conta no JJ System</p>
+                </div>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Usuário</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" name="username" class="form-control" placeholder="Seu usuário" required autofocus>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Senha</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" name="password" id="senhaInput" class="form-control" placeholder="Sua senha" required>
+                            <button class="btn btn-outline-secondary" type="button" onclick="toggleSenha()">
+                                <i class="bi bi-eye" id="olhoIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="lembrar" class="form-check-input" id="lembrar">
+                        <label class="form-check-label small" for="lembrar">Lembrar-me</label>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100 fw-bold py-2">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Entrar
+                    </button>
+                </form>
+
+                <hr class="my-4">
+                <p class="text-center mb-0 small">
+                    Não tem conta? <a href="{{ url_for('cadastro') }}" class="text-danger fw-bold">Cadastre-se grátis</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSenha() {
+    const input = document.getElementById('senhaInput');
+    const icon = document.getElementById('olhoIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+}
+</script>
+{% endblock %}

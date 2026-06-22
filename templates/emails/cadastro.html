@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background:#c0392b;padding:30px;text-align:center;">
+      <h1 style="color:#fff;margin:0;font-size:24px;">JJ System</h1>
+      <p style="color:#ffcccc;margin:8px 0 0;">Sistema de Competicoes de Jiu-Jitsu</p>
+    </div>
+    <div style="padding:30px;">
+      <h2 style="color:#222;margin-top:0;">Bem-vindo, {{ user.nome_completo or user.username }}!</h2>
+      <p style="color:#555;line-height:1.6;">
+        Seu cadastro no <strong>JJ System</strong> foi realizado com sucesso.
+        Agora voce ja pode acessar o sistema e se inscrever nas competicoes disponíveis.
+      </p>
+      <div style="background:#f9f9f9;border-left:4px solid #c0392b;padding:15px;margin:20px 0;border-radius:4px;">
+        <p style="margin:0;color:#555;"><strong>Usuario:</strong> {{ user.username }}</p>
+        <p style="margin:8px 0 0;color:#555;"><strong>E-mail:</strong> {{ user.email }}</p>
+      </div>
+      <p style="color:#555;line-height:1.6;">
+        Complete seu perfil com seus dados pessoais, academia e faixa para poder se inscrever nas competicoes.
+      </p>
+      <p style="color:#888;font-size:13px;margin-top:30px;border-top:1px solid #eee;padding-top:15px;">
+        JJ System &copy; 2025 - Desenvolvido por Welington Marques
+      </p>
+    </div>
+  </div>
+</body>
+</html>

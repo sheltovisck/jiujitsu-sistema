@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Admin - Competicoes - JJ System{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-bold mb-0"><i class="bi bi-trophy me-2 text-danger"></i>Gerenciar Competicoes</h2>
+    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalNovaComp">
+        <i class="bi bi-plus-circle me-1"></i>Nova Competicao
+    </button>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">Nome</th>
+                        <th>Data</th>
+                        <th>Local</th>
+                        <th>Inscricao c/ desconto</th>
+                        <th>Inscricao s/ desconto</th>
+                        <th>Inscritos</th>
+                        <th>Status</th>
+                        <th class="pe-3 text-center">Acoes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for comp in competicoes %}
+                    <tr>
+                        <td class="ps-3 fw-semibold">{{ comp.nome }}</td>
+                        <td class="small">{{ comp.data.strftime('%d/%m/%Y') }}</td>
+                        <td class="text-muted small">{{ comp.cidade or '' }}{% if comp.cidade and comp.estado %} - {% endif %}{{ comp.estado or '' }}</td>
+                        <td class="small">
+                            {% if comp.prazo_desconto %}
+                                <span class="text-success fw-semibold">R$ {{ '%.2f'|format(comp.valor_com_desconto or 0) }}</span>
+                                <span class="text-muted d-block" style="font-size:0.75rem;">ate {{ comp.prazo_desconto.strftime('%d/%m/%Y') }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            {% if comp.valor_inscricao and comp.valor_inscricao > 0 %}
+                                <span class="fw-semibold">R$ {{ '%.2f'|format(comp.valor_inscricao) }}</span>
+                                {% if comp.prazo_inscricao %}
+                                <span class="text-muted d-block" style="font-size:0.75rem;">ate {{ comp.prazo_inscricao.strftime('%d/%m/%Y') }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-success">Gratis</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-info text-dark">{{ comp.total_inscritos() }}</span></td>
+                        <td>
+                            {% if comp.ativa %}<span class="badge bg-success">Ativa</span>
+                            {% else %}<span class="badge bg-secondary">Inativa</span>{% endif %}
+                        </td>
+                        <td class="pe-3 text-center">
+                            <button class="btn btn-outline-primary btn-sm" title="Editar"
+                                data-bs-toggle="modal" data-bs-target="#modalEditar{{ comp.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <a href="{{ url_for('admin_chaves', comp_id=comp.id) }}"
+                               class="btn btn-outline-dark btn-sm" title="Ver chaves">
+                                <i class="bi bi-diagram-3"></i>
+                            </a>
+                            <form method="POST" action="{{ url_for('admin_toggle_competicao', comp_id=comp.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-sm {% if comp.ativa %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                                    title="{% if comp.ativa %}Desativar{% else %}Ativar{% endif %}">
+                                    <i class="bi bi-{% if comp.ativa %}pause{% else %}play{% endif %}"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" class="text-center py-5 text-muted">
+                        <i class="bi bi-trophy fs-1 d-block mb-2"></i>Nenhuma competicao criada ainda.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modais de edicao - FORA da tabela -->
+{% for comp in competicoes %}
+<div class="modal fade" id="modalEditar{{ comp.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil me-2"></i>Editar: {{ comp.nome }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_editar_competicao', comp_id=comp.id) }}">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Nome da competicao</label>
+                            <input type="text" name="nome" class="form-control" value="{{ comp.nome }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Data da competicao</label>
+                            <input type="date" name="data" class="form-control"
+                                value="{{ comp.data.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Local / Ginasio</label>
+                            <input type="text" name="local" class="form-control" value="{{ comp.local or '' }}">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Cidade</label>
+                            <input type="text" name="cidade" class="form-control" value="{{ comp.cidade or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">UF</label>
+                            <select name="estado" class="form-select">
+                                <option value="">UF</option>
+                                {% for uf in ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'] %}
+                                <option value="{{ uf }}" {% if comp.estado == uf %}selected{% endif %}>{{ uf }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <p class="fw-semibold text-primary mb-0"><i class="bi bi-tag me-1"></i>Valores e Prazos</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Inscricao com desconto - Valor (R$)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number" name="valor_com_desconto" class="form-control"
+                                    value="{{ '%.2f'|format(comp.valor_com_desconto or 0) }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Inscricao com desconto - Ate</label>
+                            <input type="date" name="prazo_desconto" class="form-control"
+                                value="{{ comp.prazo_desconto.strftime('%Y-%m-%d') if comp.prazo_desconto else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Inscricao sem desconto - Valor (R$)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number" name="valor_inscricao" class="form-control"
+                                    value="{{ '%.2f'|format(comp.valor_inscricao or 0) }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Inscricao sem desconto - Ate</label>
+                            <input type="date" name="prazo_inscricao" class="form-control"
+                                value="{{ comp.prazo_inscricao.strftime('%Y-%m-%d') if comp.prazo_inscricao else '' }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Descricao</label>
+                            <textarea name="descricao" class="form-control" rows="2">{{ comp.descricao or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="bi bi-save me-1"></i>Salvar Alteracoes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modal Nova Competicao -->
+<div class="modal fade" id="modalNovaComp" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Nova Competicao</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Nome da competicao <span class="text-danger">*</span></label>
+                            <input type="text" name="nome" class="form-control" placeholder="Ex: Campeonato Estadual 2025" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Data da competicao <span class="text-danger">*</span></label>
+                            <input type="date" name="data" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Local / Ginasio</label>
+                            <input type="text" name="local" class="form-control" placeholder="Ex: Ginasio Municipal">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Cidade</label>
+                            <input type="text" name="cidade" class="form-control" placeholder="Cidade">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">UF</label>
+                            <select name="estado" class="form-select">
+                                <option value="">UF</option>
+                                {% for uf in ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'] %}
+                                <option value="{{ uf }}">{{ uf }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <hr class="my-1">
+                            <p class="fw-semibold text-danger mb-0"><i class="bi bi-tag me-1"></i>Valores e Prazos</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Inscricao com desconto - Valor (R$)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number" name="valor_com_desconto" class="form-control" placeholder="0.00" step="0.01" min="0" value="0">
+                            </div>
+                            <div class="form-text">Deixe 0 se nao houver desconto</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Inscricao com desconto - Ate</label>
+                            <input type="date" name="prazo_desconto" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Inscricao sem desconto - Valor (R$)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="number" name="valor_inscricao" class="form-control" placeholder="0.00" step="0.01" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Inscricao sem desconto - Ate</label>
+                            <input type="date" name="prazo_inscricao" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Descricao</label>
+                            <textarea name="descricao" class="form-control" rows="3" placeholder="Informacoes adicionais..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4">
+                        <i class="bi bi-check-circle me-1"></i>Criar Competicao
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

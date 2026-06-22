@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Inscrever-se - {{ competicao.nome }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-trophy me-2"></i>{{ competicao.nome }}</h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- Info da competição -->
+                <div class="bg-light rounded p-3 mb-4">
+                    <h6 class="fw-bold text-muted mb-2">DETALHES DA COMPETIÇÃO</h6>
+                    <div class="row g-2 small">
+                        <div class="col-6"><i class="bi bi-calendar3 me-1 text-danger"></i><strong>Data:</strong> {{ competicao.data.strftime('%d/%m/%Y') }}</div>
+                        {% if competicao.local %}<div class="col-6"><i class="bi bi-building me-1"></i>{{ competicao.local }}</div>{% endif %}
+                        {% if competicao.cidade %}<div class="col-6"><i class="bi bi-geo-alt me-1"></i>{{ competicao.cidade }} - {{ competicao.estado }}</div>{% endif %}
+                        {% if competicao.prazo_inscricao %}<div class="col-6"><i class="bi bi-clock me-1 text-warning"></i><strong>Prazo:</strong> {{ competicao.prazo_inscricao.strftime('%d/%m/%Y') }}</div>{% endif %}
+                        <div class="col-6">
+                            {% if competicao.valor_inscricao and competicao.valor_inscricao > 0 %}
+                            <i class="bi bi-cash me-1"></i><strong>Valor:</strong> R$ {{ '%.2f'|format(competicao.valor_inscricao) }}
+                            {% else %}<i class="bi bi-gift me-1 text-success"></i>Inscrição gratuita{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dados do atleta -->
+                <h6 class="fw-bold text-muted mb-3">SEUS DADOS DE INSCRIÇÃO</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6">
+                        <div class="card border-0 bg-light p-3 text-center h-100">
+                            <div class="small text-muted mb-1">Atleta</div>
+                            <div class="fw-bold">{{ current_user.nome_completo }}</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="card border-0 bg-light p-3 text-center h-100">
+                            <div class="small text-muted mb-1">Academia</div>
+                            <div class="fw-bold">{{ current_user.academia }}</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="card border-0 bg-light p-3 text-center h-100">
+                            <div class="small text-muted mb-1">Faixa</div>
+                            <div class="fw-bold">{{ current_user.faixa }} {% if current_user.grau %}- {{ current_user.grau }}º grau{% endif %}</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="card border-0 bg-light p-3 text-center h-100">
+                            <div class="small text-muted mb-1">Peso</div>
+                            <div class="fw-bold">{{ current_user.peso }} kg</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="card border-0 bg-danger text-white p-3 text-center h-100">
+                            <div class="small opacity-75 mb-1">Categoria</div>
+                            <div class="fw-bold">{{ current_user.get_categoria_peso() }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Observações (opcional)</label>
+                        <textarea name="observacoes" class="form-control" rows="3"
+                                  placeholder="Alguma informação adicional para o organizador..."></textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('competicoes') }}" class="btn btn-outline-secondary flex-fill">
+                            <i class="bi bi-arrow-left me-1"></i>Voltar
+                        </a>
+                        <button type="submit" class="btn btn-danger flex-fill fw-bold">
+                            <i class="bi bi-check-circle me-2"></i>Confirmar inscrição
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

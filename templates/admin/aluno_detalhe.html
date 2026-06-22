@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Admin - {{ aluno.nome_completo or aluno.username }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('admin_alunos') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+    <div class="flex-grow-1">
+        <h2 class="fw-bold mb-0">{{ aluno.nome_completo or aluno.username }}</h2>
+        <p class="text-muted mb-0 small">
+            @{{ aluno.username }} &bull; Cadastrado em {{ aluno.created_at.strftime('%d/%m/%Y') }}
+            {% if aluno.is_professor %}<span class="badge bg-success ms-1"><i class="bi bi-person-check me-1"></i>Professor</span>{% endif %}
+        </p>
+    </div>
+    <form method="POST" action="{{ url_for('admin_toggle_professor_user', user_id=aluno.id) }}">
+        <button type="submit" class="btn btn-sm {% if aluno.is_professor %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+            <i class="bi bi-person-{% if aluno.is_professor %}dash{% else %}check{% endif %} me-1"></i>
+            {% if aluno.is_professor %}Remover Professor{% else %}Tornar Professor{% endif %}
+        </button>
+    </form>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <!-- Dados pessoais -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white fw-bold"><i class="bi bi-person me-2"></i>Dados Pessoais</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted">Nome:</td><td class="fw-semibold">{{ aluno.nome_completo or '—' }}</td></tr>
+                    <tr><td class="text-muted">Email:</td><td>{{ aluno.email }}</td></tr>
+                    <tr><td class="text-muted">CPF:</td><td>{{ aluno.cpf or '—' }}</td></tr>
+                    <tr><td class="text-muted">Telefone:</td><td>{{ aluno.telefone or '—' }}</td></tr>
+                    <tr><td class="text-muted">Sexo:</td><td>{{ 'Masculino' if aluno.sexo == 'M' else 'Feminino' if aluno.sexo == 'F' else '—' }}</td></tr>
+                    <tr><td class="text-muted">Nascimento:</td><td>{{ aluno.data_nascimento.strftime('%d/%m/%Y') if aluno.data_nascimento else '—' }}</td></tr>
+                    <tr><td class="text-muted">Cidade:</td><td>{{ aluno.cidade or '—' }}{% if aluno.estado %} - {{ aluno.estado }}{% endif %}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Dados JJ -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-danger text-white fw-bold"><i class="bi bi-award me-2"></i>Dados de Jiu-Jitsu</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted">Academia:</td><td class="fw-semibold">{{ aluno.academia or '—' }}</td></tr>
+                    <tr><td class="text-muted">Professor:</td><td>{{ aluno.professor or '—' }}</td></tr>
+                    <tr><td class="text-muted">Faixa:</td><td>
+                        {% if aluno.faixa %}
+                        <span class="badge faixa-badge faixa-{{ aluno.faixa.lower().replace(' ', '-') }}">{{ aluno.faixa }}{% if aluno.grau %} {{ aluno.grau }}º grau{% endif %}</span>
+                        {% else %}—{% endif %}
+                    </td></tr>
+                    <tr><td class="text-muted">Peso:</td><td>{{ aluno.peso ~ ' kg' if aluno.peso else '—' }}</td></tr>
+                    <tr><td class="text-muted">Categoria:</td><td><strong>{{ aluno.get_categoria_peso() }}</strong></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <!-- Inscrições -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-bold border-bottom">
+                <i class="bi bi-clipboard-check me-2 text-success"></i>Inscrições em Competições
+            </div>
+            <div class="card-body p-0">
+                {% if aluno.inscricoes %}
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr><th class="ps-3">Competição</th><th>Data</th><th>Faixa</th><th>Categoria</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for insc in aluno.inscricoes %}
+                        <tr>
+                            <td class="ps-3 fw-semibold">{{ insc.competicao.nome }}</td>
+                            <td class="text-muted small">{{ insc.competicao.data.strftime('%d/%m/%Y') }}</td>
+                            <td class="small">{{ insc.faixa_inscricao or '—' }}</td>
+                            <td class="small">{{ insc.categoria_peso or '—' }}</td>
+                            <td>
+                                {% if insc.status == 'aprovado' %}<span class="badge bg-success">Aprovado</span>
+                                {% elif insc.status == 'pendente' %}<span class="badge bg-warning text-dark">Pendente</span>
+                                {% elif insc.status == 'rejeitado' %}<span class="badge bg-danger">Rejeitado</span>
+                                {% else %}<span class="badge bg-secondary">Cancelado</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center py-4 text-muted">Nenhuma inscrição registrada.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

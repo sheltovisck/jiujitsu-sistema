@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Cadastro - JJ System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card border-0 shadow">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="login-icon bg-danger text-white rounded-circle mx-auto mb-3">
+                        <i class="bi bi-person-plus-fill fs-2"></i>
+                    </div>
+                    <h3 class="fw-bold">Criar Conta</h3>
+                    <p class="text-muted small">Cadastre-se para participar das competições</p>
+                </div>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nome de usuário <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-at"></i></span>
+                            <input type="text" name="username" class="form-control" placeholder="Ex: joaosilva" required
+                                   pattern="[a-zA-Z0-9_]+" title="Apenas letras, números e underline">
+                        </div>
+                        <div class="form-text">Sem espaços ou caracteres especiais</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">E-mail <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" name="email" class="form-control" placeholder="seu@email.com" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Senha <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" name="password" id="senha1" class="form-control"
+                                   placeholder="Mínimo 6 caracteres" required minlength="6">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Confirmar senha <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                            <input type="password" name="password2" id="senha2" class="form-control"
+                                   placeholder="Repita a senha" required minlength="6">
+                        </div>
+                        <div id="senhaFeedback" class="form-text"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100 fw-bold py-2">
+                        <i class="bi bi-person-check me-2"></i>Criar minha conta
+                    </button>
+                </form>
+
+                <hr class="my-4">
+                <p class="text-center mb-0 small">
+                    Já tem conta? <a href="{{ url_for('login') }}" class="text-danger fw-bold">Entrar</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const s1 = document.getElementById('senha1');
+const s2 = document.getElementById('senha2');
+const fb = document.getElementById('senhaFeedback');
+function checkSenhas() {
+    if (s2.value && s1.value !== s2.value) {
+        fb.textContent = '❌ As senhas não coincidem';
+        fb.className = 'form-text text-danger';
+    } else if (s2.value && s1.value === s2.value) {
+        fb.textContent = '✅ Senhas coincidem';
+        fb.className = 'form-text text-success';
+    } else { fb.textContent = ''; }
+}
+s1.addEventListener('input', checkSenhas);
+s2.addEventListener('input', checkSenhas);
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Admin - Alunos{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-bold mb-0"><i class="bi bi-people me-2 text-primary"></i>Alunos Cadastrados</h2>
+    <span class="badge bg-primary fs-6">{{ alunos|length }} alunos</span>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 py-3">
+        <input type="text" id="buscaInput" class="form-control" placeholder="🔍 Buscar por nome, academia ou faixa...">
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle" id="tabelaAlunos">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Nome</th>
+                        <th>Academia</th>
+                        <th>Faixa</th>
+                        <th>Peso</th>
+                        <th>Inscrições</th>
+                        <th>Perfil</th>
+                        <th class="pe-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aluno in alunos %}
+                    <tr>
+                        <td class="ps-3 text-muted">{{ loop.index }}</td>
+                        <td>
+                            <div class="fw-semibold">{{ aluno.nome_completo or aluno.username }}</div>
+                            <div class="text-muted small">@{{ aluno.username }} &bull; {{ aluno.email }}</div>
+                        </td>
+                        <td>
+                            <div>{{ aluno.academia or '—' }}</div>
+                            {% if aluno.professor %}<div class="text-muted small">Prof. {{ aluno.professor }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {% if aluno.faixa %}
+                            <span class="badge faixa-badge faixa-{{ aluno.faixa.lower().replace(' ', '-') }}">
+                                {{ aluno.faixa }}{% if aluno.grau %} {{ aluno.grau }}º{% endif %}
+                            </span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if aluno.peso %}
+                            {{ aluno.peso }}kg
+                            <div class="text-muted small">{{ aluno.get_categoria_peso() }}</div>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ aluno.inscricoes|length }}</span>
+                        </td>
+                        <td>
+                            {% if aluno.perfil_completo() %}
+                                <span class="badge bg-success"><i class="bi bi-check"></i> Completo</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation"></i> Incompleto</span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3">
+                            <a href="{{ url_for('admin_aluno_detalhe', user_id=aluno.id) }}" class="btn btn-outline-primary btn-sm" title="Ver detalhes">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-people fs-1 d-block mb-2"></i>Nenhum aluno cadastrado ainda.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('buscaInput').addEventListener('input', function() {
+    const termo = this.value.toLowerCase();
+    document.querySelectorAll('#tabelaAlunos tbody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(termo) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}
