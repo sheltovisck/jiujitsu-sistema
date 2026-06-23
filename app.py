@@ -91,7 +91,7 @@ def login():
         if user and user.check_password(password):
             login_user(user, remember=request.form.get("lembrar"))
             nome = user.nome_completo or user.username
-            flash(f"Bem-vindo, {nome}\!", "success")
+            flash(f"Bem-vindo, {nome}!", "success")
             next_page = request.args.get("next")
             return redirect(next_page or url_for("dashboard"))
         flash("Usuario ou senha incorretos.", "danger")
@@ -125,7 +125,7 @@ def cadastro():
         db.session.commit()
         enviar_email_cadastro(user)
         login_user(user)
-        flash("Cadastro realizado\! Complete seu perfil.", "success")
+        flash("Cadastro realizado! Complete seu perfil.", "success")
         return redirect(url_for("perfil"))
     return render_template("cadastro.html")
 
@@ -181,7 +181,7 @@ def perfil():
             except ValueError:
                 pass
         db.session.commit()
-        flash("Perfil atualizado com sucesso\!", "success")
+        flash("Perfil atualizado com sucesso!", "success")
         return redirect(url_for("perfil"))
     return render_template("perfil.html", academias=academias, professores=professores)
 
@@ -215,7 +215,7 @@ def historico_faixa():
         )
         db.session.add(registro)
         db.session.commit()
-        flash("Graduacao adicionada ao historico\!", "success")
+        flash("Graduacao adicionada ao historico!", "success")
         return redirect(url_for("historico_faixa"))
     historico = HistoricoFaixa.query.filter_by(user_id=current_user.id).order_by(
         HistoricoFaixa.data_graduacao.desc()
@@ -274,7 +274,7 @@ def inscrever(comp_id):
         db.session.add(inscricao)
         db.session.commit()
         enviar_email_inscricao(current_user, competicao)
-        flash("Inscricao realizada\! Aguarde aprovacao.", "success")
+        flash("Inscricao realizada! Aguarde aprovacao.", "success")
         return redirect(url_for("dashboard"))
     return render_template("inscrever.html", competicao=competicao)
 
@@ -449,7 +449,7 @@ def admin_academias():
         )
         db.session.add(academia)
         db.session.commit()
-        flash("Academia cadastrada com sucesso\!", "success")
+        flash("Academia cadastrada com sucesso!", "success")
         return redirect(url_for("admin_academias"))
     academias = Academia.query.order_by(Academia.nome).all()
     return render_template("admin/academias.html", academias=academias)
@@ -499,7 +499,7 @@ def admin_professores():
         )
         db.session.add(professor)
         db.session.commit()
-        flash("Professor cadastrado com sucesso\!", "success")
+        flash("Professor cadastrado com sucesso!", "success")
         return redirect(url_for("admin_professores"))
     professores = Professor.query.order_by(Professor.nome).all()
     academias = Academia.query.filter_by(ativa=True).order_by(Academia.nome).all()
@@ -559,7 +559,7 @@ def admin_competicoes():
                           descricao=descricao, valor_inscricao=valor)
         db.session.add(comp)
         db.session.commit()
-        flash("Competicao criada com sucesso\!", "success")
+        flash("Competicao criada com sucesso!", "success")
         return redirect(url_for("admin_competicoes"))
     competicoes = Competicao.query.order_by(Competicao.data.desc()).all()
     return render_template("admin/competicoes.html", competicoes=competicoes)
@@ -634,7 +634,7 @@ def admin_editar_competicao(comp_id):
         flash("Data invalida.", "danger")
         return redirect(url_for("admin_competicoes"))
     db.session.commit()
-    flash(f"Competicao atualizada com sucesso\!", "success")
+    flash(f"Competicao atualizada com sucesso!", "success")
     return redirect(url_for("admin_competicoes"))
 
 
