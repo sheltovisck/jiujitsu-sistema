@@ -314,7 +314,7 @@ def cancelar_inscricao(insc_id):
     inscricao = Inscricao.query.get_or_404(insc_id)
     if inscricao.user_id != current_user.id:
         abort(403)
-    inscricao.status = "cancelado"
+    db.session.delete(inscricao)
     db.session.commit()
     flash("Inscricao cancelada.", "info")
     return redirect(url_for("dashboard"))
@@ -387,7 +387,11 @@ def professor_inscricoes():
 def professor_atualizar_status(insc_id):
     inscricao = Inscricao.query.get_or_404(insc_id)
     novo_status = request.form.get("status")
-    if novo_status in ["pendente", "aprovado", "rejeitado", "cancelado"]:
+    if novo_status == "cancelado":
+        db.session.delete(inscricao)
+        db.session.commit()
+        flash(f"Inscricao #{insc_id} cancelada e removida.", "success")
+    elif novo_status in ["pendente", "aprovado", "rejeitado"]:
         inscricao.status = novo_status
         db.session.commit()
         flash(f"Inscricao #{inscricao.id} atualizada.", "success")
@@ -607,7 +611,11 @@ def admin_inscricoes():
 def admin_atualizar_status(insc_id):
     inscricao = Inscricao.query.get_or_404(insc_id)
     novo_status = request.form.get("status")
-    if novo_status in ["pendente", "aprovado", "rejeitado", "cancelado"]:
+    if novo_status == "cancelado":
+        db.session.delete(inscricao)
+        db.session.commit()
+        flash(f"Inscricao #{insc_id} cancelada e removida.", "success")
+    elif novo_status in ["pendente", "aprovado", "rejeitado"]:
         inscricao.status = novo_status
         db.session.commit()
         flash(f"Inscricao #{inscricao.id} atualizada.", "success")
