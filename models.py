@@ -1,9 +1,35 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, date
 
 db = SQLAlchemy()
+
+
+def calcular_categoria_peso(peso, sexo, juvenil=False):
+    """Categoria de peso por sexo e faixa etaria (Juvenil ou Adulto e Master)."""
+    if peso is None:
+        return "Nao definido"
+    if sexo == "M":
+        limites = [
+            (53.5, "Galo"), (59.0, "Pluma"), (64.0, "Pena"), (69.0, "Leve"),
+            (74.3, "Medio"), (79.3, "Meio-Pesado"), (84.3, "Pesado"), (89.5, "Super-Pesado"),
+        ] if juvenil else [
+            (57.5, "Galo"), (64.0, "Pluma"), (70.0, "Pena"), (76.0, "Leve"),
+            (82.3, "Medio"), (88.3, "Meio-Pesado"), (94.3, "Pesado"), (100.5, "Super-Pesado"),
+        ]
+    else:
+        limites = [
+            (44.0, "Galo"), (48.0, "Pluma"), (52.0, "Pena"), (56.0, "Leve"),
+            (60.0, "Medio"), (64.0, "Meio-Pesado"), (68.0, "Pesado"), (72.5, "Super-Pesado"),
+        ] if juvenil else [
+            (48.5, "Galo"), (53.5, "Pluma"), (58.5, "Pena"), (64.0, "Leve"),
+            (69.0, "Medio"), (74.0, "Meio-Pesado"), (79.3, "Pesado"), (84.3, "Super-Pesado"),
+        ]
+    for limite, nome in limites:
+        if peso <= limite:
+            return nome
+    return "Pesadissimo"
 
 
 class Academia(db.Model):
@@ -88,29 +114,18 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    def get_idade(self):
+        if not self.data_nascimento:
+            return None
+        hoje = date.today()
+        return hoje.year - self.data_nascimento.year - (
+            (hoje.month, hoje.day) < (self.data_nascimento.month, self.data_nascimento.day)
+        )
+
     def get_categoria_peso(self):
-        if self.peso is None:
-            return "Nao definido"
-        if self.sexo == "M":
-            if self.peso <= 57.5: return "Pluma"
-            elif self.peso <= 64: return "Pena"
-            elif self.peso <= 70: return "Leve"
-            elif self.peso <= 76: return "Meio-Leve"
-            elif self.peso <= 82.3: return "Meio"
-            elif self.peso <= 88.3: return "Meio-Pesado"
-            elif self.peso <= 94.3: return "Pesado"
-            elif self.peso <= 100.5: return "Super-Pesado"
-            else: return "Pesadissimo"
-        else:
-            if self.peso <= 48.5: return "Pluma"
-            elif self.peso <= 53.5: return "Pena"
-            elif self.peso <= 58.5: return "Leve"
-            elif self.peso <= 64: return "Meio-Leve"
-            elif self.peso <= 69: return "Meio"
-            elif self.peso <= 74: return "Meio-Pesado"
-            elif self.peso <= 79.3: return "Pesado"
-            elif self.peso <= 84.3: return "Super-Pesado"
-            else: return "Pesadissimo"
+        idade = self.get_idade()
+        juvenil = idade is not None and 16 <= idade <= 17
+        return calcular_categoria_peso(self.peso, self.sexo, juvenil)
 
     def perfil_completo(self):
         campos = [self.nome_completo, self.cpf, self.data_nascimento,

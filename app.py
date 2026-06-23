@@ -2,7 +2,10 @@ from flask import Flask, render_template, redirect, url_for, flash, request, abo
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
 from datetime import datetime, date
-from models import db, User, Competicao, Inscricao, Academia, Professor, HistoricoFaixa, Configuracao
+from models import (
+    db, User, Competicao, Inscricao, Academia, Professor, HistoricoFaixa, Configuracao,
+    calcular_categoria_peso,
+)
 import os
 
 app = Flask(__name__)
@@ -324,31 +327,6 @@ def api_professores(academia_id):
     return jsonify([{"id": p.id, "nome": p.nome} for p in profs])
 
 
-def calcular_categoria_peso(peso, sexo):
-    if peso is None:
-        return "Nao definido"
-    if sexo == "M":
-        if peso <= 57.5: return "Pluma"
-        elif peso <= 64: return "Pena"
-        elif peso <= 70: return "Leve"
-        elif peso <= 76: return "Meio-Leve"
-        elif peso <= 82.3: return "Meio"
-        elif peso <= 88.3: return "Meio-Pesado"
-        elif peso <= 94.3: return "Pesado"
-        elif peso <= 100.5: return "Super-Pesado"
-        else: return "Pesadissimo"
-    else:
-        if peso <= 48.5: return "Pluma"
-        elif peso <= 53.5: return "Pena"
-        elif peso <= 58.5: return "Leve"
-        elif peso <= 64: return "Meio-Leve"
-        elif peso <= 69: return "Meio"
-        elif peso <= 74: return "Meio-Pesado"
-        elif peso <= 79.3: return "Pesado"
-        elif peso <= 84.3: return "Super-Pesado"
-        else: return "Pesadissimo"
-
-
 @app.route("/inscricao/<int:insc_id>/editar-peso", methods=["POST"])
 @login_required
 def editar_peso_inscricao(insc_id):
@@ -367,7 +345,9 @@ def editar_peso_inscricao(insc_id):
         flash("Peso invalido.", "danger")
         return redirect(url_for("dashboard"))
     inscricao.peso_inscricao = peso
-    inscricao.categoria_peso = calcular_categoria_peso(peso, current_user.sexo)
+    idade = current_user.get_idade()
+    juvenil = idade is not None and 16 <= idade <= 17
+    inscricao.categoria_peso = calcular_categoria_peso(peso, current_user.sexo, juvenil)
     db.session.commit()
     flash(f"Peso atualizado para {peso} kg — categoria: {inscricao.categoria_peso}.", "success")
     return redirect(url_for("dashboard"))
