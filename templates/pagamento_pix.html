@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Pagamento - {{ competicao.nome }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-check-circle me-2"></i>Inscrição confirmada!</h5>
+            </div>
+            <div class="card-body p-4">
+
+                {% if valor and valor > 0 %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Para finalizar a inscrição é necessário realizar o Pix para a chave abaixo.
+                </div>
+
+                <div class="bg-light rounded p-3 mb-3 text-center">
+                    <div class="small text-muted mb-1">Valor da inscrição{% if com_desconto %} (com desconto){% endif %}</div>
+                    <div class="fs-2 fw-bold text-danger">R$ {{ '%.2f'|format(valor) }}</div>
+                </div>
+
+                {% if chave_pix %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Chave Pix{% if beneficiario_pix %} — {{ beneficiario_pix }}{% endif %}</label>
+                    <div class="input-group">
+                        <input type="text" id="chavePixInput" class="form-control fw-bold" value="{{ chave_pix }}" readonly>
+                        <button class="btn btn-danger" type="button" id="btnCopiarPix">
+                            <i class="bi bi-clipboard me-1"></i>Copiar
+                        </button>
+                    </div>
+                    <div class="form-text" id="copiadoFeedback"></div>
+                </div>
+                <div class="alert alert-info small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Após o pagamento, sua inscrição será analisada e aprovada pelo organizador.
+                </div>
+                {% else %}
+                <div class="alert alert-secondary small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Entre em contato com o organizador para combinar a forma de pagamento da inscrição.
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="alert alert-success">
+                    <i class="bi bi-gift me-2"></i>Esta competição é gratuita, nenhum pagamento é necessário.
+                </div>
+                {% endif %}
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Ir para o meu painel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const btnCopiar = document.getElementById('btnCopiarPix');
+if (btnCopiar) {
+    btnCopiar.addEventListener('click', function() {
+        const input = document.getElementById('chavePixInput');
+        const fb = document.getElementById('copiadoFeedback');
+        function avisarCopiado() {
+            fb.textContent = 'Chave Pix copiada!';
+            fb.className = 'form-text text-success';
+            setTimeout(() => { fb.textContent = ''; }, 3000);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(input.value).then(avisarCopiado, function() {
+                input.select();
+                document.execCommand('copy');
+                avisarCopiado();
+            });
+        } else {
+            input.select();
+            document.execCommand('copy');
+            avisarCopiado();
+        }
+    });
+}
+</script>
+{% endblock %}

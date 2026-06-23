@@ -12,6 +12,36 @@
 <div class="row justify-content-center">
     <div class="col-lg-7">
 
+        <!-- Card Pix -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white fw-bold">
+                <i class="bi bi-qr-code me-2"></i>Pagamento via Pix
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <input type="hidden" name="form" value="pix">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Chave Pix <span class="text-danger">*</span></label>
+                        <input type="text" name="chave_pix" class="form-control"
+                               placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatoria"
+                               value="{{ chave_pix }}">
+                        <div class="form-text">
+                            Exibida ao aluno apos confirmar a inscricao em uma competicao paga.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nome do beneficiario</label>
+                        <input type="text" name="beneficiario_pix" class="form-control"
+                               placeholder="Nome ou razao social que recebe o Pix"
+                               value="{{ beneficiario_pix }}">
+                    </div>
+                    <button type="submit" class="btn btn-danger fw-bold px-4">
+                        <i class="bi bi-save me-1"></i>Salvar Chave Pix
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <!-- Card E-mail -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-dark text-white fw-bold">

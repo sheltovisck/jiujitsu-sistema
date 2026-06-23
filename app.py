@@ -275,8 +275,34 @@ def inscrever(comp_id):
         db.session.commit()
         enviar_email_inscricao(current_user, competicao)
         flash("Inscricao realizada! Aguarde aprovacao.", "success")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("pagamento_pix", insc_id=inscricao.id))
     return render_template("inscrever.html", competicao=competicao)
+
+
+def calcular_valor_inscricao(competicao):
+    """Retorna (valor, com_desconto) considerando o prazo de desconto da competicao."""
+    hoje = date.today()
+    if (competicao.prazo_desconto and competicao.valor_com_desconto
+            and competicao.valor_com_desconto > 0 and hoje <= competicao.prazo_desconto):
+        return competicao.valor_com_desconto, True
+    return competicao.valor_inscricao or 0.0, False
+
+
+@app.route("/inscricao/<int:insc_id>/pagamento")
+@login_required
+def pagamento_pix(insc_id):
+    inscricao = Inscricao.query.get_or_404(insc_id)
+    if inscricao.user_id != current_user.id:
+        abort(403)
+    competicao = inscricao.competicao
+    valor, com_desconto = calcular_valor_inscricao(competicao)
+    chave_pix = Configuracao.get("chave_pix", "")
+    beneficiario_pix = Configuracao.get("beneficiario_pix", "")
+    return render_template(
+        "pagamento_pix.html", inscricao=inscricao, competicao=competicao,
+        valor=valor, com_desconto=com_desconto,
+        chave_pix=chave_pix, beneficiario_pix=beneficiario_pix
+    )
 
 
 @app.route("/cancelar-inscricao/<int:insc_id>", methods=["POST"])
@@ -672,6 +698,11 @@ def admin_toggle_professor_user(user_id):
 @admin_required
 def admin_configuracoes():
     if request.method == "POST":
+        if request.form.get("form") == "pix":
+            Configuracao.set("chave_pix", request.form.get("chave_pix", "").strip())
+            Configuracao.set("beneficiario_pix", request.form.get("beneficiario_pix", "").strip())
+            flash("Configuracoes de Pix salvas com sucesso.", "success")
+            return redirect(url_for("admin_configuracoes"))
         username = request.form.get("mail_username", "").strip()
         password = request.form.get("mail_password", "").strip()
         ativo = request.form.get("mail_ativo") == "1"
@@ -684,10 +715,14 @@ def admin_configuracoes():
     mail_username = Configuracao.get("mail_username", "")
     mail_ativo = Configuracao.get("mail_ativo", "0") == "1"
     mail_senha_salva = bool(Configuracao.get("mail_password"))
+    chave_pix = Configuracao.get("chave_pix", "")
+    beneficiario_pix = Configuracao.get("beneficiario_pix", "")
     return render_template("admin/configuracoes.html",
                            mail_username=mail_username,
                            mail_ativo=mail_ativo,
-                           mail_senha_salva=mail_senha_salva)
+                           mail_senha_salva=mail_senha_salva,
+                           chave_pix=chave_pix,
+                           beneficiario_pix=beneficiario_pix)
 
 
 @app.route("/admin/configuracoes/testar", methods=["POST"])

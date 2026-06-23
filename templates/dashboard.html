@@ -120,6 +120,9 @@
                     <td>
                         <div class="d-flex gap-1">
                             {% if insc.status == 'pendente' %}
+                            <a href="{{ url_for('pagamento_pix', insc_id=insc.id) }}" class="btn btn-outline-success btn-sm" title="Ver dados de pagamento Pix">
+                                <i class="bi bi-qr-code"></i>
+                            </a>
                             <button class="btn btn-outline-primary btn-sm" title="Alterar peso"
                                 data-bs-toggle="modal" data-bs-target="#modalPeso{{ insc.id }}">
                                 <i class="bi bi-pencil"></i>
