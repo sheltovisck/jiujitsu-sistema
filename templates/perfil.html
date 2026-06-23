@@ -128,14 +128,14 @@
                     <div class="row g-2 mb-3">
                         <div class="col-7">
                             <label class="form-label fw-semibold">Faixa <span class="text-danger">*</span></label>
-                            <select name="faixa" class="form-select">
+                            <select name="faixa" id="faixaSelect" class="form-select">
                                 <option value="">Selecionar...</option>
                                 {% for f in ['Branca','Cinza','Amarela','Laranja','Verde','Azul','Roxa','Marrom','Preta','Vermelha e Preta','Vermelha e Branca','Vermelha'] %}
                                 <option value="{{ f }}" {% if current_user.faixa == f %}selected{% endif %}>{{ f }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-5">
+                        <div class="col-5" id="grauWrapper">
                             <label class="form-label fw-semibold">Grau</label>
                             <select name="grau" class="form-select">
                                 <option value="">Sem grau</option>
@@ -180,6 +180,21 @@
 
 {% block scripts %}
 <script>
+// Mostrar grau apenas para faixa preta
+const faixaSelect = document.getElementById('faixaSelect');
+const grauWrapper = document.getElementById('grauWrapper');
+function toggleGrau() {
+    if (faixaSelect.value === 'Preta') {
+        grauWrapper.style.display = '';
+    } else {
+        grauWrapper.style.display = 'none';
+        grauWrapper.querySelector('select').value = '';
+    }
+}
+if (faixaSelect && grauWrapper) {
+    faixaSelect.addEventListener('change', toggleGrau);
+    toggleGrau();
+}
 // Mascara CPF
 const cpf = document.getElementById('cpfInput');
 cpf && cpf.addEventListener('input', function() {

@@ -100,14 +100,14 @@
                     <div class="row g-3">
                         <div class="col-7">
                             <label class="form-label fw-semibold">Faixa <span class="text-danger">*</span></label>
-                            <select name="faixa" class="form-select" required>
+                            <select name="faixa" id="faixaSelectModal" class="form-select" required>
                                 <option value="">Selecionar...</option>
                                 {% for f in ['Branca','Cinza','Amarela','Laranja','Verde','Azul','Roxa','Marrom','Preta','Vermelha e Preta','Vermelha e Branca','Vermelha'] %}
                                 <option value="{{ f }}">{{ f }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-5">
+                        <div class="col-5" id="grauWrapperModal" style="display:none;">
                             <label class="form-label fw-semibold">Grau</label>
                             <select name="grau" class="form-select">
                                 <option value="">Sem grau</option>
@@ -160,4 +160,18 @@
 .faixa-badge-vermelha-e-branca { background: linear-gradient(90deg,#c62828 50%,#f0f0f0 50%); color:#333; }
 .faixa-badge-vermelha      { background:#c62828; color:#fff; }
 </style>
+<script>
+function toggleGrauModal() {
+    const faixa = document.getElementById('faixaSelectModal').value;
+    const wrapper = document.getElementById('grauWrapperModal');
+    if (faixa === 'Preta') {
+        wrapper.style.display = '';
+    } else {
+        wrapper.style.display = 'none';
+        wrapper.querySelector('select').value = '';
+    }
+}
+document.getElementById('faixaSelectModal').addEventListener('change', toggleGrauModal);
+toggleGrauModal();
+</script>
 {% endblock %}
