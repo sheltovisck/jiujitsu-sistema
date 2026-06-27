@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Acompanhamento - {{ comp.nome }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('admin_chaves', comp_id=comp.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+    <div>
+        <h2 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-dark"></i>Acompanhamento — {{ comp.nome }}</h2>
+        <p class="text-muted mb-0 small">
+            {{ comp.data.strftime('%d/%m/%Y') }}
+            {% if comp.hora_inicio %} &bull; início às {{ comp.hora_inicio.strftime('%H:%M') }}{% endif %}
+            &bull; {{ areas|length }} área(s) &bull; {{ total_lutas }} luta(s)
+        </p>
+    </div>
+</div>
+
+{% if total_lutas == 0 %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-clock-history fs-1 d-block mb-3"></i>
+    <h5>Nenhuma luta para acompanhar ainda.</h5>
+    <p>Aprove inscrições e gere as chaves antes de acompanhar o campeonato.</p>
+</div>
+{% else %}
+<div class="row g-3">
+    {% for area in areas %}
+    <div class="col-lg-{{ 12 // areas|length if areas|length <= 4 else 6 }} col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold"><i class="bi bi-geo-alt me-2"></i>Área {{ area.numero }}</span>
+                <span class="badge bg-light text-dark">{{ area.lutas|length }} luta(s)</span>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                {% if area.lutas %}
+                {% for luta in area.lutas %}
+                <div class="border rounded p-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small">{{ loop.index }}ª luta &bull; {{ luta.chave }}</span>
+                        {% if luta.horario %}
+                        <span class="badge bg-light text-dark border">{{ luta.horario.strftime('%H:%M') }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="fw-semibold {% if luta.atleta1.presente %}text-success{% else %}text-danger{% endif %}">
+                        {{ luta.atleta1.aluno.nome_completo or luta.atleta1.aluno.username }}
+                    </div>
+                    <div class="text-muted small my-1">vs</div>
+                    <div class="fw-semibold {% if luta.atleta2.presente %}text-success{% else %}text-danger{% endif %}">
+                        {{ luta.atleta2.aluno.nome_completo or luta.atleta2.aluno.username }}
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted small mb-0">Nenhuma luta atribuída a esta área.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

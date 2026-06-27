@@ -178,6 +178,8 @@ class Competicao(db.Model):
     prazo_inscricao = db.Column(db.Date)
     valor_inscricao = db.Column(db.Float, default=0.0)
     ativa = db.Column(db.Boolean, default=True)
+    hora_inicio = db.Column(db.Time)
+    num_areas = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     inscricoes = db.relationship("Inscricao", backref="competicao", lazy=True)
 
@@ -223,3 +225,16 @@ class GrupoPeso(db.Model):
 
     def __repr__(self):
         return "<GrupoPeso " + self.categorias + ">"
+
+
+class TempoCategoria(db.Model):
+    """Duracao estimada (em minutos) de cada luta de uma chave (faixa + categoria,
+    ja considerando mesclagens) usada para montar o cronograma por area."""
+    __tablename__ = "tempos_categoria"
+    id = db.Column(db.Integer, primary_key=True)
+    competicao_id = db.Column(db.Integer, db.ForeignKey("competicoes.id"), nullable=False)
+    chave = db.Column(db.String(120), nullable=False)
+    minutos = db.Column(db.Integer, nullable=False, default=5)
+
+    def __repr__(self):
+        return "<TempoCategoria " + self.chave + ">"

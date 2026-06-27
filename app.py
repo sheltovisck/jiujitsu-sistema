@@ -1,10 +1,10 @@
 from flask import Flask, render_template, redirect, url_for, flash, request, abort, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from models import (
     db, User, Competicao, Inscricao, Academia, Professor, HistoricoFaixa, Configuracao,
-    GrupoPeso, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
+    GrupoPeso, TempoCategoria, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
 )
 import os
 
@@ -665,11 +665,8 @@ def _categoria_para_grupo(grupos, faixa, categoria):
     return None
 
 
-@app.route("/admin/competicao/<int:comp_id>/chaves")
-@login_required
-@admin_required
-def admin_chaves(comp_id):
-    comp = Competicao.query.get_or_404(comp_id)
+def montar_chaves(comp_id):
+    """Monta as chaves (faixa+categoria, ja mescladas) com as inscricoes aprovadas."""
     inscricoes = Inscricao.query.filter_by(
         competicao_id=comp_id
     ).filter(Inscricao.status == "aprovado").all()
@@ -703,10 +700,103 @@ def admin_chaves(comp_id):
         chave = faixa + " | " + rotulo_categoria
         chaves.setdefault(chave, []).append(insc)
 
+    return chaves, grupos, categorias_ordenadas
+
+
+def gerar_confrontos(inscricoes):
+    """Retorna lista de pares (insc1, insc2). insc2 e None quando ha BYE."""
+    pares = []
+    n = len(inscricoes)
+    for i in range(0, n - 1, 2):
+        pares.append((inscricoes[i], inscricoes[i + 1]))
+    if n % 2 != 0:
+        pares.append((inscricoes[-1], None))
+    return pares
+
+
+@app.route("/admin/competicao/<int:comp_id>/chaves")
+@login_required
+@admin_required
+def admin_chaves(comp_id):
+    comp = Competicao.query.get_or_404(comp_id)
+    chaves, grupos, categorias_ordenadas = montar_chaves(comp_id)
+    tempos = {t.chave: t.minutos for t in TempoCategoria.query.filter_by(competicao_id=comp_id).all()}
+
     return render_template(
         "admin/chaves.html", comp=comp, chaves=chaves,
-        categorias_ordenadas=categorias_ordenadas, grupos=grupos,
+        categorias_ordenadas=categorias_ordenadas, grupos=grupos, tempos=tempos,
     )
+
+
+@app.route("/admin/competicao/<int:comp_id>/parametros", methods=["POST"])
+@login_required
+@admin_required
+def admin_salvar_parametros_campeonato(comp_id):
+    comp = Competicao.query.get_or_404(comp_id)
+    hora_inicio = request.form.get("hora_inicio", "").strip()
+    num_areas = request.form.get("num_areas", "1").strip()
+    try:
+        comp.hora_inicio = datetime.strptime(hora_inicio, "%H:%M").time() if hora_inicio else None
+        comp.num_areas = max(1, int(num_areas))
+    except ValueError:
+        flash("Horario ou numero de areas invalido.", "danger")
+        return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+    for chave, minutos in request.form.items():
+        if not chave.startswith("tempo__"):
+            continue
+        chave_nome = chave[len("tempo__"):]
+        try:
+            minutos_int = max(1, int(minutos))
+        except ValueError:
+            continue
+        tempo = TempoCategoria.query.filter_by(competicao_id=comp_id, chave=chave_nome).first()
+        if tempo:
+            tempo.minutos = minutos_int
+        else:
+            db.session.add(TempoCategoria(competicao_id=comp_id, chave=chave_nome, minutos=minutos_int))
+
+    db.session.commit()
+    flash("Configuracoes do campeonato salvas com sucesso.", "success")
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+
+@app.route("/admin/competicao/<int:comp_id>/acompanhamento")
+@login_required
+@admin_required
+def admin_acompanhamento(comp_id):
+    comp = Competicao.query.get_or_404(comp_id)
+    chaves, _, _ = montar_chaves(comp_id)
+    tempos = {t.chave: t.minutos for t in TempoCategoria.query.filter_by(competicao_id=comp_id).all()}
+    num_areas = comp.num_areas or 1
+
+    lutas = []
+    for chave, inscricoes in chaves.items():
+        for insc1, insc2 in gerar_confrontos(inscricoes):
+            if insc2 is None:
+                continue  # BYE nao gera luta
+            lutas.append({"chave": chave, "atleta1": insc1, "atleta2": insc2,
+                           "minutos": tempos.get(chave, 5)})
+
+    areas = [[] for _ in range(num_areas)]
+    for i, luta in enumerate(lutas):
+        areas[i % num_areas].append(luta)
+
+    inicio_dt = None
+    if comp.hora_inicio:
+        inicio_dt = datetime.combine(comp.data, comp.hora_inicio)
+
+    areas_info = []
+    for idx, lutas_area in enumerate(areas, start=1):
+        relogio = inicio_dt
+        lista = []
+        for luta in lutas_area:
+            lista.append({**luta, "horario": relogio})
+            if relogio:
+                relogio = relogio + timedelta(minutes=luta["minutos"])
+        areas_info.append({"numero": idx, "lutas": lista})
+
+    return render_template("admin/acompanhamento.html", comp=comp, areas=areas_info, total_lutas=len(lutas))
 
 
 @app.route("/admin/competicao/<int:comp_id>/mesclar-categorias", methods=["POST"])
@@ -913,6 +1003,16 @@ def migrar_banco(engine):
                     faixa_inscricao VARCHAR(30) NOT NULL,
                     categorias VARCHAR(200) NOT NULL
                 )''', 'Tabela grupos_peso verificada')
+        executar(conn, 'ALTER TABLE competicoes ADD COLUMN hora_inicio TIME',
+                  'Adicionado: competicoes.hora_inicio')
+        executar(conn, 'ALTER TABLE competicoes ADD COLUMN num_areas INTEGER DEFAULT 1',
+                  'Adicionado: competicoes.num_areas')
+        executar(conn, f'''CREATE TABLE IF NOT EXISTS tempos_categoria (
+                    id {autoincrement},
+                    competicao_id INTEGER NOT NULL REFERENCES competicoes(id),
+                    chave VARCHAR(120) NOT NULL,
+                    minutos INTEGER NOT NULL DEFAULT 5
+                )''', 'Tabela tempos_categoria verificada')
 
 
 def init_db():

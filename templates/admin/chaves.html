@@ -2,7 +2,7 @@
 {% block title %}Chaves - {{ comp.nome }}{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-3 mb-4">
+<div class="d-flex flex-wrap align-items-center gap-3 mb-4">
     <a href="{{ url_for('admin_competicoes') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i>Voltar
     </a>
@@ -10,10 +10,41 @@
         <h2 class="fw-bold mb-0"><i class="bi bi-diagram-3 me-2 text-dark"></i>Chaves — {{ comp.nome }}</h2>
         <p class="text-muted mb-0 small">{{ comp.data.strftime('%d/%m/%Y') }}{% if comp.cidade %} &bull; {{ comp.cidade }} - {{ comp.estado }}{% endif %}</p>
     </div>
-    <a href="{{ url_for('checkin_competicao', comp_id=comp.id) }}" class="btn btn-outline-dark btn-sm ms-auto">
-        <i class="bi bi-check2-square me-1"></i>Check-in dos atletas
-    </a>
+    <div class="ms-md-auto d-flex flex-wrap gap-2">
+        <a href="{{ url_for('admin_acompanhamento', comp_id=comp.id) }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-clock-history me-1"></i>Acompanhamento
+        </a>
+        <a href="{{ url_for('checkin_competicao', comp_id=comp.id) }}" class="btn btn-outline-dark btn-sm">
+            <i class="bi bi-check2-square me-1"></i>Check-in dos atletas
+        </a>
+    </div>
 </div>
+
+<form method="POST" action="{{ url_for('admin_salvar_parametros_campeonato', comp_id=comp.id) }}">
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <span class="fw-bold"><i class="bi bi-gear me-2"></i>Parâmetros gerais do campeonato</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Horário de início</label>
+                <input type="time" name="hora_inicio" class="form-control"
+                       value="{{ comp.hora_inicio.strftime('%H:%M') if comp.hora_inicio else '' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Número de áreas de luta</label>
+                <input type="number" name="num_areas" min="1" class="form-control" value="{{ comp.num_areas or 1 }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-dark w-100">
+                    <i class="bi bi-save me-1"></i>Salvar parâmetros gerais
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+</form>
 
 {% if categorias_ordenadas %}
 <div class="card border-0 shadow-sm mb-4">
@@ -59,6 +90,18 @@
 
 {% if chaves %}
     {% for categoria, inscricoes in chaves.items() %}
+    <form method="POST" action="{{ url_for('admin_salvar_parametros_campeonato', comp_id=comp.id) }}"
+          class="card border-0 shadow-sm mb-2">
+        <input type="hidden" name="hora_inicio" value="{{ comp.hora_inicio.strftime('%H:%M') if comp.hora_inicio else '' }}">
+        <input type="hidden" name="num_areas" value="{{ comp.num_areas or 1 }}">
+        <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
+            <label class="small fw-semibold mb-0">Tempo de luta — {{ categoria }}:</label>
+            <input type="number" name="tempo__{{ categoria }}" min="1" style="width:90px"
+                   class="form-control form-control-sm" value="{{ tempos.get(categoria, 5) }}">
+            <span class="text-muted small">min</span>
+            <button type="submit" class="btn btn-sm btn-outline-dark ms-auto">Salvar</button>
+        </div>
+    </form>
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
             <span class="fw-bold"><i class="bi bi-award me-2"></i>{{ categoria }}</span>
