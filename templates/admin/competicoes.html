@@ -9,7 +9,60 @@
     </button>
 </div>
 
-<div class="card border-0 shadow-sm">
+<!-- Cards (mobile) -->
+<div class="d-md-none d-flex flex-column gap-2 mb-3">
+    {% for comp in competicoes %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="fw-bold">{{ comp.nome }}</div>
+                    <div class="text-muted small">{{ comp.data.strftime('%d/%m/%Y') }}{% if comp.cidade %} &bull; {{ comp.cidade }}{% if comp.estado %} - {{ comp.estado }}{% endif %}{% endif %}</div>
+                </div>
+                {% if comp.ativa %}<span class="badge bg-success">Ativa</span>
+                {% else %}<span class="badge bg-secondary">Inativa</span>{% endif %}
+            </div>
+            <div class="small mt-2">
+                {% if comp.valor_inscricao and comp.valor_inscricao > 0 %}
+                    <span class="fw-semibold">R$ {{ '%.2f'|format(comp.valor_inscricao) }}</span>
+                {% else %}
+                    <span class="text-success">Gratis</span>
+                {% endif %}
+                <span class="badge bg-info text-dark ms-2">{{ comp.total_inscritos() }} inscrito(s)</span>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-primary btn-sm flex-fill" title="Editar"
+                    data-bs-toggle="modal" data-bs-target="#modalEditar{{ comp.id }}">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <a href="{{ url_for('admin_chaves', comp_id=comp.id) }}"
+                   class="btn btn-outline-dark btn-sm flex-fill" title="Ver chaves">
+                    <i class="bi bi-diagram-3"></i>
+                </a>
+                <a href="{{ url_for('checkin_competicao', comp_id=comp.id) }}"
+                   class="btn btn-outline-success btn-sm flex-fill" title="Check-in">
+                    <i class="bi bi-check2-square"></i>
+                </a>
+                <form method="POST" action="{{ url_for('admin_toggle_competicao', comp_id=comp.id) }}" class="flex-fill">
+                    <button type="submit" class="btn btn-sm w-100 {% if comp.ativa %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                        title="{% if comp.ativa %}Desativar{% else %}Ativar{% endif %}">
+                        <i class="bi bi-{% if comp.ativa %}pause{% else %}play{% endif %}"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-trophy fs-1 d-block mb-2"></i>Nenhuma competicao criada ainda.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Tabela (desktop) -->
+<div class="card border-0 shadow-sm d-none d-md-block">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">

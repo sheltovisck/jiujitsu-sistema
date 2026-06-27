@@ -144,6 +144,11 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    if not current_user.inscricoes:
+        if current_user.is_admin:
+            return redirect(url_for("admin_dashboard"))
+        if current_user.is_professor:
+            return redirect(url_for("professor_inscricoes"))
     inscricoes = Inscricao.query.filter_by(user_id=current_user.id).order_by(Inscricao.created_at.desc()).all()
     competicoes_abertas = Competicao.query.filter(
         Competicao.ativa == True,

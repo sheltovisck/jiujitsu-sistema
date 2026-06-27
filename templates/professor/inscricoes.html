@@ -43,7 +43,57 @@
 <!-- Tabela -->
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <!-- Cards (mobile) -->
+        <div class="d-md-none d-flex flex-column gap-2 p-3">
+            {% for insc in inscricoes %}
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold">{{ insc.aluno.nome_completo or insc.aluno.username }}</div>
+                            <div class="text-muted small">{{ insc.aluno.academia or '—' }}</div>
+                        </div>
+                        {% if insc.status == 'aprovado' %}<span class="badge bg-success">Aprovado</span>
+                        {% elif insc.status == 'pendente' %}<span class="badge bg-warning text-dark">Pendente</span>
+                        {% elif insc.status == 'rejeitado' %}<span class="badge bg-danger">Rejeitado</span>
+                        {% else %}<span class="badge bg-secondary">Cancelado</span>{% endif %}
+                    </div>
+                    <div class="small mt-2">
+                        <div class="fw-semibold">{{ insc.competicao.nome }}</div>
+                        <div class="text-muted">{{ insc.faixa_inscricao or '—' }} &bull; {{ insc.categoria_peso or '—' }}</div>
+                    </div>
+                    {% if insc.status == 'pendente' %}
+                    <div class="d-flex gap-2 mt-3">
+                        <form method="POST" action="{{ url_for('professor_atualizar_status', insc_id=insc.id) }}" class="flex-fill">
+                            <input type="hidden" name="status" value="aprovado">
+                            <button type="submit" class="btn btn-success btn-sm w-100" title="Aprovar">
+                                <i class="bi bi-check-lg me-1"></i>Aprovar
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('professor_atualizar_status', insc_id=insc.id) }}" class="flex-fill">
+                            <input type="hidden" name="status" value="rejeitado">
+                            <button type="submit" class="btn btn-danger btn-sm w-100" title="Rejeitar">
+                                <i class="bi bi-x-lg me-1"></i>Rejeitar
+                            </button>
+                        </form>
+                    </div>
+                    {% elif insc.status == 'aprovado' %}
+                    <a href="{{ url_for('checkin_competicao', comp_id=insc.competicao_id) }}"
+                       class="btn btn-outline-success btn-sm w-100 mt-3" title="Check-in">
+                        <i class="bi bi-check2-square me-1"></i>Check-in
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-clipboard fs-1 d-block mb-2"></i>Nenhuma inscricao encontrada.
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Tabela (desktop) -->
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover mb-0 align-middle">
                 <thead class="table-dark">
                     <tr>
