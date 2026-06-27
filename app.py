@@ -867,98 +867,47 @@ def admin_alterar_senha():
 
 def migrar_banco(engine):
     import sqlalchemy
+    eh_sqlite = engine.url.get_backend_name() == "sqlite"
+    autoincrement = "INTEGER PRIMARY KEY AUTOINCREMENT" if eh_sqlite else "SERIAL PRIMARY KEY"
+    tipo_datahora = "DATETIME" if eh_sqlite else "TIMESTAMP"
+
+    def executar(conn, sql, mensagem):
+        try:
+            conn.execute(sqlalchemy.text(sql))
+            conn.commit()
+            print(f"[migracao] {mensagem}")
+        except Exception:
+            conn.rollback()
+
     with engine.connect() as conn:
-        # Colunas novas em competicoes
-        try:
-            conn.execute(sqlalchemy.text(
-                'ALTER TABLE competicoes ADD COLUMN prazo_desconto DATE'
-            ))
-            conn.commit()
-            print('[migracao] Adicionado: prazo_desconto')
-        except Exception:
-            pass
-        try:
-            conn.execute(sqlalchemy.text(
-                'ALTER TABLE competicoes ADD COLUMN valor_com_desconto REAL DEFAULT 0.0'
-            ))
-            conn.commit()
-            print('[migracao] Adicionado: valor_com_desconto')
-        except Exception:
-            pass
+        executar(conn, 'ALTER TABLE competicoes ADD COLUMN prazo_desconto DATE',
+                  'Adicionado: prazo_desconto')
+        executar(conn, 'ALTER TABLE competicoes ADD COLUMN valor_com_desconto REAL DEFAULT 0.0',
+                  'Adicionado: valor_com_desconto')
         # Colunas novas em users
-        try:
-            conn.execute(sqlalchemy.text(
-                'ALTER TABLE users ADD COLUMN academia_id INTEGER REFERENCES academias(id)'
-            ))
-            conn.commit()
-            print('[migracao] Adicionado: users.academia_id')
-        except Exception:
-            pass
-        try:
-            conn.execute(sqlalchemy.text(
-                'ALTER TABLE users ADD COLUMN professor_id INTEGER REFERENCES professores(id)'
-            ))
-            conn.commit()
-            print('[migracao] Adicionado: users.professor_id')
-        except Exception:
-            pass
-        try:
-            conn.execute(sqlalchemy.text(
-                'ALTER TABLE users ADD COLUMN is_professor BOOLEAN DEFAULT 0'
-            ))
-            conn.commit()
-            print('[migracao] Adicionado: users.is_professor')
-        except Exception:
-            pass
-        try:
-            conn.execute(sqlalchemy.text(
-                'ALTER TABLE inscricoes ADD COLUMN peso_inscricao REAL'
-            ))
-            conn.commit()
-            print('[migracao] Adicionado: inscricoes.peso_inscricao')
-        except Exception:
-            pass
-        try:
-            conn.execute(sqlalchemy.text(
-                '''CREATE TABLE IF NOT EXISTS configuracoes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+        executar(conn, 'ALTER TABLE users ADD COLUMN academia_id INTEGER REFERENCES academias(id)',
+                  'Adicionado: users.academia_id')
+        executar(conn, 'ALTER TABLE users ADD COLUMN professor_id INTEGER REFERENCES professores(id)',
+                  'Adicionado: users.professor_id')
+        executar(conn, 'ALTER TABLE users ADD COLUMN is_professor BOOLEAN DEFAULT FALSE',
+                  'Adicionado: users.is_professor')
+        executar(conn, 'ALTER TABLE inscricoes ADD COLUMN peso_inscricao REAL',
+                  'Adicionado: inscricoes.peso_inscricao')
+        executar(conn, f'''CREATE TABLE IF NOT EXISTS configuracoes (
+                    id {autoincrement},
                     chave VARCHAR(80) UNIQUE NOT NULL,
                     valor TEXT
-                )'''
-            ))
-            conn.commit()
-            print('[migracao] Tabela configuracoes verificada')
-        except Exception:
-            pass
-        try:
-            conn.execute(sqlalchemy.text(
-                'ALTER TABLE inscricoes ADD COLUMN presente BOOLEAN DEFAULT 0'
-            ))
-            conn.commit()
-            print('[migracao] Adicionado: inscricoes.presente')
-        except Exception:
-            pass
-        try:
-            conn.execute(sqlalchemy.text(
-                'ALTER TABLE inscricoes ADD COLUMN checkin_em DATETIME'
-            ))
-            conn.commit()
-            print('[migracao] Adicionado: inscricoes.checkin_em')
-        except Exception:
-            pass
-        try:
-            conn.execute(sqlalchemy.text(
-                '''CREATE TABLE IF NOT EXISTS grupos_peso (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                )''', 'Tabela configuracoes verificada')
+        executar(conn, 'ALTER TABLE inscricoes ADD COLUMN presente BOOLEAN DEFAULT FALSE',
+                  'Adicionado: inscricoes.presente')
+        executar(conn, f'ALTER TABLE inscricoes ADD COLUMN checkin_em {tipo_datahora}',
+                  'Adicionado: inscricoes.checkin_em')
+        executar(conn, f'''CREATE TABLE IF NOT EXISTS grupos_peso (
+                    id {autoincrement},
                     competicao_id INTEGER NOT NULL REFERENCES competicoes(id),
                     faixa_inscricao VARCHAR(30) NOT NULL,
                     categorias VARCHAR(200) NOT NULL
-                )'''
-            ))
-            conn.commit()
-            print('[migracao] Tabela grupos_peso verificada')
-        except Exception:
-            pass
+                )''', 'Tabela grupos_peso verificada')
 
 
 def init_db():
