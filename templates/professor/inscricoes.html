@@ -85,6 +85,11 @@
                                     <i class="bi bi-x-lg"></i>
                                 </button>
                             </form>
+                            {% elif insc.status == 'aprovado' %}
+                            <a href="{{ url_for('checkin_competicao', comp_id=insc.competicao_id) }}"
+                               class="btn btn-outline-success btn-sm" title="Check-in">
+                                <i class="bi bi-check2-square"></i>
+                            </a>
                             {% else %}
                             <span class="text-muted small">—</span>
                             {% endif %}

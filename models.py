@@ -32,6 +32,12 @@ def calcular_categoria_peso(peso, sexo, juvenil=False):
     return "Pesadissimo"
 
 
+ORDEM_CATEGORIAS_PESO = [
+    "Galo", "Pluma", "Pena", "Leve", "Medio",
+    "Meio-Pesado", "Pesado", "Super-Pesado", "Pesadissimo",
+]
+
+
 class Academia(db.Model):
     __tablename__ = "academias"
     id = db.Column(db.Integer, primary_key=True)
@@ -192,7 +198,28 @@ class Inscricao(db.Model):
     faixa_inscricao = db.Column(db.String(30))
     peso_inscricao = db.Column(db.Float)
     observacoes = db.Column(db.Text)
+    presente = db.Column(db.Boolean, default=False)
+    checkin_em = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return "<Inscricao user=" + str(self.user_id) + ">"
+
+
+class GrupoPeso(db.Model):
+    """Mesclagem manual de categorias de peso adjacentes para uma faixa,
+    usada quando ha poucos inscritos em categorias vizinhas."""
+    __tablename__ = "grupos_peso"
+    id = db.Column(db.Integer, primary_key=True)
+    competicao_id = db.Column(db.Integer, db.ForeignKey("competicoes.id"), nullable=False)
+    faixa_inscricao = db.Column(db.String(30), nullable=False)
+    categorias = db.Column(db.String(200), nullable=False)  # ex: "Galo,Pluma"
+
+    def lista_categorias(self):
+        return self.categorias.split(",")
+
+    def nome_exibicao(self):
+        return "+".join(self.lista_categorias())
+
+    def __repr__(self):
+        return "<GrupoPeso " + self.categorias + ">"

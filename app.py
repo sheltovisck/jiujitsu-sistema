@@ -4,7 +4,7 @@ from flask_mail import Mail, Message
 from datetime import datetime, date
 from models import (
     db, User, Competicao, Inscricao, Academia, Professor, HistoricoFaixa, Configuracao,
-    calcular_categoria_peso,
+    GrupoPeso, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
 )
 import os
 
@@ -652,6 +652,14 @@ def admin_editar_competicao(comp_id):
     return redirect(url_for("admin_competicoes"))
 
 
+def _categoria_para_grupo(grupos, faixa, categoria):
+    """Retorna o GrupoPeso que contem essa categoria+faixa, se houver."""
+    for g in grupos:
+        if g.faixa_inscricao == faixa and categoria in g.lista_categorias():
+            return g
+    return None
+
+
 @app.route("/admin/competicao/<int:comp_id>/chaves")
 @login_required
 @admin_required
@@ -660,13 +668,113 @@ def admin_chaves(comp_id):
     inscricoes = Inscricao.query.filter_by(
         competicao_id=comp_id
     ).filter(Inscricao.status == "aprovado").all()
+    grupos = GrupoPeso.query.filter_by(competicao_id=comp_id).all()
+
+    contagens = {}
+    for insc in inscricoes:
+        faixa = insc.faixa_inscricao or ""
+        categoria = insc.categoria_peso or ""
+        contagens.setdefault(faixa, {}).setdefault(categoria, 0)
+        contagens[faixa][categoria] += 1
+
+    categorias_ordenadas = {}
+    for faixa, cats in contagens.items():
+        ordenadas = sorted(
+            cats.items(),
+            key=lambda item: ORDEM_CATEGORIAS_PESO.index(item[0])
+            if item[0] in ORDEM_CATEGORIAS_PESO else len(ORDEM_CATEGORIAS_PESO),
+        )
+        categorias_ordenadas[faixa] = ordenadas
+
     chaves = {}
     for insc in inscricoes:
-        chave = (insc.faixa_inscricao or "") + " | " + (insc.categoria_peso or "")
-        if chave not in chaves:
-            chaves[chave] = []
-        chaves[chave].append(insc)
-    return render_template("admin/chaves.html", comp=comp, chaves=chaves)
+        faixa = insc.faixa_inscricao or ""
+        categoria = insc.categoria_peso or ""
+        grupo = _categoria_para_grupo(grupos, faixa, categoria)
+        if grupo:
+            rotulo_categoria = grupo.nome_exibicao()
+        else:
+            rotulo_categoria = categoria
+        chave = faixa + " | " + rotulo_categoria
+        chaves.setdefault(chave, []).append(insc)
+
+    return render_template(
+        "admin/chaves.html", comp=comp, chaves=chaves,
+        categorias_ordenadas=categorias_ordenadas, grupos=grupos,
+    )
+
+
+@app.route("/admin/competicao/<int:comp_id>/mesclar-categorias", methods=["POST"])
+@login_required
+@admin_required
+def admin_mesclar_categorias(comp_id):
+    Competicao.query.get_or_404(comp_id)
+    faixa = request.form.get("faixa", "").strip()
+    categorias = request.form.getlist("categorias")
+    if not faixa or len(categorias) < 2:
+        flash("Selecione ao menos 2 categorias da mesma faixa para mesclar.", "warning")
+        return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+    grupos_existentes = GrupoPeso.query.filter_by(
+        competicao_id=comp_id, faixa_inscricao=faixa
+    ).all()
+    for g in grupos_existentes:
+        if any(c in categorias for c in g.lista_categorias()):
+            db.session.delete(g)
+
+    ordenadas = sorted(
+        categorias,
+        key=lambda c: ORDEM_CATEGORIAS_PESO.index(c) if c in ORDEM_CATEGORIAS_PESO else len(ORDEM_CATEGORIAS_PESO),
+    )
+    novo_grupo = GrupoPeso(
+        competicao_id=comp_id, faixa_inscricao=faixa, categorias=",".join(ordenadas)
+    )
+    db.session.add(novo_grupo)
+    db.session.commit()
+    flash(f"Categorias mescladas: {novo_grupo.nome_exibicao()} ({faixa}).", "success")
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+
+@app.route("/admin/grupo-peso/<int:grupo_id>/desfazer", methods=["POST"])
+@login_required
+@admin_required
+def admin_desfazer_grupo_peso(grupo_id):
+    grupo = GrupoPeso.query.get_or_404(grupo_id)
+    comp_id = grupo.competicao_id
+    db.session.delete(grupo)
+    db.session.commit()
+    flash("Mesclagem desfeita.", "success")
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+
+@app.route("/competicao/<int:comp_id>/checkin")
+@login_required
+@professor_required
+def checkin_competicao(comp_id):
+    comp = Competicao.query.get_or_404(comp_id)
+    busca = request.args.get("q", "").strip()
+    query = Inscricao.query.filter_by(competicao_id=comp_id).filter(Inscricao.status == "aprovado")
+    if not current_user.is_admin:
+        query = query.join(User).filter(User.professor_id == current_user.professor_id)
+    if busca:
+        query = query.join(User).filter(User.nome_completo.ilike(f"%{busca}%"))
+    inscricoes = query.order_by(Inscricao.faixa_inscricao, Inscricao.categoria_peso).all()
+    return render_template("checkin.html", comp=comp, inscricoes=inscricoes, busca=busca)
+
+
+@app.route("/competicao/<int:comp_id>/checkin/<int:insc_id>", methods=["POST"])
+@login_required
+@professor_required
+def checkin_toggle(comp_id, insc_id):
+    inscricao = Inscricao.query.get_or_404(insc_id)
+    if inscricao.competicao_id != comp_id:
+        abort(404)
+    if not current_user.is_admin and inscricao.aluno.professor_id != current_user.professor_id:
+        abort(403)
+    inscricao.presente = not inscricao.presente
+    inscricao.checkin_em = datetime.utcnow() if inscricao.presente else None
+    db.session.commit()
+    return redirect(request.referrer or url_for("checkin_competicao", comp_id=comp_id))
 
 
 @app.route("/admin/aluno/<int:user_id>/toggle-professor", methods=["POST"])
@@ -820,6 +928,35 @@ def migrar_banco(engine):
             ))
             conn.commit()
             print('[migracao] Tabela configuracoes verificada')
+        except Exception:
+            pass
+        try:
+            conn.execute(sqlalchemy.text(
+                'ALTER TABLE inscricoes ADD COLUMN presente BOOLEAN DEFAULT 0'
+            ))
+            conn.commit()
+            print('[migracao] Adicionado: inscricoes.presente')
+        except Exception:
+            pass
+        try:
+            conn.execute(sqlalchemy.text(
+                'ALTER TABLE inscricoes ADD COLUMN checkin_em DATETIME'
+            ))
+            conn.commit()
+            print('[migracao] Adicionado: inscricoes.checkin_em')
+        except Exception:
+            pass
+        try:
+            conn.execute(sqlalchemy.text(
+                '''CREATE TABLE IF NOT EXISTS grupos_peso (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    competicao_id INTEGER NOT NULL REFERENCES competicoes(id),
+                    faixa_inscricao VARCHAR(30) NOT NULL,
+                    categorias VARCHAR(200) NOT NULL
+                )'''
+            ))
+            conn.commit()
+            print('[migracao] Tabela grupos_peso verificada')
         except Exception:
             pass
 
