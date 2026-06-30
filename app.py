@@ -268,14 +268,11 @@ def inscrever(comp_id):
         flash("O prazo de inscricoes encerrou.", "danger")
         return redirect(url_for("competicoes"))
     if request.method == "POST":
-        faixa_str = current_user.faixa or ""
-        grau_str = (str(current_user.grau) + "o grau") if current_user.grau else ""
-        faixa_insc = (faixa_str + " - " + grau_str) if grau_str else faixa_str
         inscricao = Inscricao(
             user_id=current_user.id,
             competicao_id=comp_id,
             categoria_peso=current_user.get_categoria_peso(),
-            faixa_inscricao=faixa_insc,
+            faixa_inscricao=current_user.faixa or "",
             peso_inscricao=current_user.peso,
             observacoes=request.form.get("observacoes", "").strip()
         )
@@ -657,6 +654,14 @@ def admin_editar_competicao(comp_id):
     return redirect(url_for("admin_competicoes"))
 
 
+def faixa_base(faixa_inscricao):
+    """Remove o grau (ex: 'Azul - 2o grau' -> 'Azul'), pois o chaveamento
+    nao separa por grau, apenas por faixa."""
+    if not faixa_inscricao:
+        return ""
+    return faixa_inscricao.split(" - ")[0].strip()
+
+
 def _categoria_para_grupo(grupos, faixa, categoria):
     """Retorna o GrupoPeso que contem essa categoria+faixa, se houver."""
     for g in grupos:
@@ -674,7 +679,7 @@ def montar_chaves(comp_id):
 
     contagens = {}
     for insc in inscricoes:
-        faixa = insc.faixa_inscricao or ""
+        faixa = faixa_base(insc.faixa_inscricao)
         categoria = insc.categoria_peso or ""
         contagens.setdefault(faixa, {}).setdefault(categoria, 0)
         contagens[faixa][categoria] += 1
@@ -690,7 +695,7 @@ def montar_chaves(comp_id):
 
     chaves = {}
     for insc in inscricoes:
-        faixa = insc.faixa_inscricao or ""
+        faixa = faixa_base(insc.faixa_inscricao)
         categoria = insc.categoria_peso or ""
         grupo = _categoria_para_grupo(grupos, faixa, categoria)
         if grupo:
