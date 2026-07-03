@@ -7,6 +7,8 @@ from models import (
     GrupoPeso, TempoCategoria, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
 )
 import os
+import secrets
+import string
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "jiujitsu-key-2024"
@@ -63,6 +65,26 @@ def enviar_email_inscricao(user, competicao):
         mail.send(msg)
     except Exception:
         pass
+
+
+def enviar_email_senha_resetada(user, nova_senha):
+    try:
+        if not _configurar_mail():
+            return False
+        msg = Message(
+            subject="Sua senha foi redefinida - JJ System",
+            recipients=[user.email],
+            html=render_template("emails/senha_resetada.html", user=user, nova_senha=nova_senha)
+        )
+        mail.send(msg)
+        return True
+    except Exception:
+        return False
+
+
+def gerar_senha_temporaria(tamanho=10):
+    alfabeto = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alfabeto) for _ in range(tamanho))
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -886,6 +908,21 @@ def admin_toggle_professor_user(user_id):
     db.session.commit()
     status = "ativado" if aluno.is_professor else "desativado"
     flash(f"Perfil professor {status} para {aluno.nome_completo or aluno.username}.", "success")
+    return redirect(url_for("admin_aluno_detalhe", user_id=user_id))
+
+
+@app.route("/admin/aluno/<int:user_id>/resetar-senha", methods=["POST"])
+@login_required
+@admin_required
+def admin_resetar_senha(user_id):
+    aluno = User.query.get_or_404(user_id)
+    nova_senha = gerar_senha_temporaria()
+    aluno.set_password(nova_senha)
+    db.session.commit()
+    if enviar_email_senha_resetada(aluno, nova_senha):
+        flash(f"Senha de {aluno.nome_completo or aluno.username} redefinida. Um e-mail foi enviado para {aluno.email}.", "success")
+    else:
+        flash(f"Senha de {aluno.nome_completo or aluno.username} redefinida para: {nova_senha} (nao foi possivel enviar o e-mail, informe ao usuario manualmente).", "warning")
     return redirect(url_for("admin_aluno_detalhe", user_id=user_id))
 
 
