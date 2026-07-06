@@ -684,16 +684,25 @@ def faixa_base(faixa_inscricao):
     return faixa_inscricao.split(" - ")[0].strip()
 
 
-def _categoria_para_grupo(grupos, faixa, categoria):
-    """Retorna o GrupoPeso que contem essa categoria+faixa, se houver."""
+def sexo_label(sexo):
+    if sexo == "M":
+        return "Masculino"
+    if sexo == "F":
+        return "Feminino"
+    return "Nao informado"
+
+
+def _categoria_para_grupo(grupos, faixa, sexo, categoria):
+    """Retorna o GrupoPeso que contem essa categoria+faixa+sexo, se houver."""
     for g in grupos:
-        if g.faixa_inscricao == faixa and categoria in g.lista_categorias():
+        if g.faixa_inscricao == faixa and (g.sexo or "") == (sexo or "") and categoria in g.lista_categorias():
             return g
     return None
 
 
 def montar_chaves(comp_id):
-    """Monta as chaves (faixa+categoria, ja mescladas) com as inscricoes aprovadas."""
+    """Monta as chaves (faixa+sexo+categoria, ja mescladas) com as inscricoes aprovadas.
+    Sexo entra na chave para nunca confrontar atletas de sexos diferentes."""
     inscricoes = Inscricao.query.filter_by(
         competicao_id=comp_id
     ).filter(Inscricao.status == "aprovado").all()
@@ -702,29 +711,31 @@ def montar_chaves(comp_id):
     contagens = {}
     for insc in inscricoes:
         faixa = faixa_base(insc.faixa_inscricao)
+        sexo = insc.aluno.sexo or ""
         categoria = insc.categoria_peso or ""
-        contagens.setdefault(faixa, {}).setdefault(categoria, 0)
-        contagens[faixa][categoria] += 1
+        contagens.setdefault((faixa, sexo), {}).setdefault(categoria, 0)
+        contagens[(faixa, sexo)][categoria] += 1
 
     categorias_ordenadas = {}
-    for faixa, cats in contagens.items():
+    for (faixa, sexo), cats in contagens.items():
         ordenadas = sorted(
             cats.items(),
             key=lambda item: ORDEM_CATEGORIAS_PESO.index(item[0])
             if item[0] in ORDEM_CATEGORIAS_PESO else len(ORDEM_CATEGORIAS_PESO),
         )
-        categorias_ordenadas[faixa] = ordenadas
+        categorias_ordenadas[(faixa, sexo)] = ordenadas
 
     chaves = {}
     for insc in inscricoes:
         faixa = faixa_base(insc.faixa_inscricao)
+        sexo = insc.aluno.sexo or ""
         categoria = insc.categoria_peso or ""
-        grupo = _categoria_para_grupo(grupos, faixa, categoria)
+        grupo = _categoria_para_grupo(grupos, faixa, sexo, categoria)
         if grupo:
             rotulo_categoria = grupo.nome_exibicao()
         else:
             rotulo_categoria = categoria
-        chave = faixa + " | " + rotulo_categoria
+        chave = faixa + " | " + sexo_label(sexo) + " | " + rotulo_categoria
         chaves.setdefault(chave, []).append(insc)
 
     return chaves, grupos, categorias_ordenadas
@@ -832,13 +843,14 @@ def admin_acompanhamento(comp_id):
 def admin_mesclar_categorias(comp_id):
     Competicao.query.get_or_404(comp_id)
     faixa = request.form.get("faixa", "").strip()
+    sexo = request.form.get("sexo", "").strip()
     categorias = request.form.getlist("categorias")
     if not faixa or len(categorias) < 2:
         flash("Selecione ao menos 2 categorias da mesma faixa para mesclar.", "warning")
         return redirect(url_for("admin_chaves", comp_id=comp_id))
 
     grupos_existentes = GrupoPeso.query.filter_by(
-        competicao_id=comp_id, faixa_inscricao=faixa
+        competicao_id=comp_id, faixa_inscricao=faixa, sexo=sexo
     ).all()
     for g in grupos_existentes:
         if any(c in categorias for c in g.lista_categorias()):
@@ -849,11 +861,11 @@ def admin_mesclar_categorias(comp_id):
         key=lambda c: ORDEM_CATEGORIAS_PESO.index(c) if c in ORDEM_CATEGORIAS_PESO else len(ORDEM_CATEGORIAS_PESO),
     )
     novo_grupo = GrupoPeso(
-        competicao_id=comp_id, faixa_inscricao=faixa, categorias=",".join(ordenadas)
+        competicao_id=comp_id, faixa_inscricao=faixa, sexo=sexo, categorias=",".join(ordenadas)
     )
     db.session.add(novo_grupo)
     db.session.commit()
-    flash(f"Categorias mescladas: {novo_grupo.nome_exibicao()} ({faixa}).", "success")
+    flash(f"Categorias mescladas: {novo_grupo.nome_exibicao()} ({faixa} - {sexo_label(sexo)}).", "success")
     return redirect(url_for("admin_chaves", comp_id=comp_id))
 
 
@@ -1045,6 +1057,8 @@ def migrar_banco(engine):
                     faixa_inscricao VARCHAR(30) NOT NULL,
                     categorias VARCHAR(200) NOT NULL
                 )''', 'Tabela grupos_peso verificada')
+        executar(conn, 'ALTER TABLE grupos_peso ADD COLUMN sexo VARCHAR(10)',
+                  'Adicionado: grupos_peso.sexo')
         executar(conn, 'ALTER TABLE competicoes ADD COLUMN hora_inicio TIME',
                   'Adicionado: competicoes.hora_inicio')
         executar(conn, 'ALTER TABLE competicoes ADD COLUMN num_areas INTEGER DEFAULT 1',

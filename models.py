@@ -215,6 +215,7 @@ class GrupoPeso(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     competicao_id = db.Column(db.Integer, db.ForeignKey("competicoes.id"), nullable=False)
     faixa_inscricao = db.Column(db.String(30), nullable=False)
+    sexo = db.Column(db.String(10))
     categorias = db.Column(db.String(200), nullable=False)  # ex: "Galo,Pluma"
 
     def lista_categorias(self):
