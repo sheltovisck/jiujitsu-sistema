@@ -19,6 +19,12 @@
             {% if aluno.is_professor %}Remover Professor{% else %}Tornar Professor{% endif %}
         </button>
     </form>
+    <form method="POST" action="{{ url_for('admin_resetar_senha', user_id=aluno.id) }}"
+          onsubmit="return confirm('Redefinir a senha de {{ aluno.nome_completo or aluno.username }}? Uma nova senha sera gerada e enviada por e-mail.')">
+        <button type="submit" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-key me-1"></i>Resetar Senha
+        </button>
+    </form>
 </div>
 
 <div class="row g-4">
