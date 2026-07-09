@@ -105,6 +105,52 @@ def index():
     return render_template("index.html", competicoes=competicoes)
 
 
+@app.route("/inscritos")
+def listagem_inscritos():
+    competicoes = Competicao.query.order_by(Competicao.data.desc()).all()
+    comp_id = request.args.get("comp", type=int)
+    professor_id = request.args.get("professor", type=int)
+    faixa_filtro = request.args.get("faixa", "").strip()
+    categoria_filtro = request.args.get("categoria", "").strip()
+    sexo_filtro = request.args.get("sexo", "").strip()
+    comp_selecionada = None
+    inscricoes = []
+    professores = []
+    faixas = []
+    categorias = []
+    if comp_id:
+        comp_selecionada = Competicao.query.get_or_404(comp_id)
+        base_query = Inscricao.query.filter_by(competicao_id=comp_id, status="aprovado").join(User)
+        todas_comp = base_query.all()
+        professores = sorted(
+            {i.aluno.professor_obj for i in todas_comp if i.aluno.professor_obj},
+            key=lambda p: p.nome,
+        )
+        faixas = sorted({i.faixa_inscricao for i in todas_comp if i.faixa_inscricao})
+        categorias = sorted(
+            {i.categoria_peso for i in todas_comp if i.categoria_peso},
+            key=lambda c: ORDEM_CATEGORIAS_PESO.index(c) if c in ORDEM_CATEGORIAS_PESO else 99,
+        )
+        query = base_query
+        if professor_id:
+            query = query.filter(User.professor_id == professor_id)
+        if faixa_filtro:
+            query = query.filter(Inscricao.faixa_inscricao == faixa_filtro)
+        if categoria_filtro:
+            query = query.filter(Inscricao.categoria_peso == categoria_filtro)
+        if sexo_filtro:
+            query = query.filter(User.sexo == sexo_filtro)
+        inscricoes = query.order_by(
+            Inscricao.faixa_inscricao, Inscricao.categoria_peso, User.nome_completo
+        ).all()
+    return render_template(
+        "inscritos.html", competicoes=competicoes, comp_selecionada=comp_selecionada,
+        inscricoes=inscricoes, professores=professores, faixas=faixas, categorias=categorias,
+        professor_filtro=professor_id, faixa_filtro=faixa_filtro, categoria_filtro=categoria_filtro,
+        sexo_filtro=sexo_filtro,
+    )
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:

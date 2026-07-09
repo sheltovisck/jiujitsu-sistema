@@ -72,9 +72,12 @@
                     {% endif %}
                     <span class="badge bg-success">{{ comp.total_inscritos() }} inscrito(s)</span>
                 </div>
-                <div class="card-footer bg-transparent border-0 pb-3">
+                <div class="card-footer bg-transparent border-0 pb-3 d-flex flex-column gap-2">
                     <a href="{{ url_for('cadastro') }}" class="btn btn-danger btn-sm w-100">
                         <i class="bi bi-person-plus me-1"></i>Inscrever-se
+                    </a>
+                    <a href="{{ url_for('listagem_inscritos', comp=comp.id) }}" class="btn btn-outline-dark btn-sm w-100">
+                        <i class="bi bi-list-check me-1"></i>Listagem de Inscritos
                     </a>
                 </div>
             </div>
