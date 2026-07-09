@@ -9,6 +9,7 @@ from models import (
 import os
 import secrets
 import string
+import math
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "jiujitsu-key-2024"
@@ -157,18 +158,14 @@ def chaves_publicas():
     competicoes = Competicao.query.filter_by(chaves_publicas=True).order_by(Competicao.data.desc()).all()
     comp_id = request.args.get("comp", type=int)
     comp_selecionada = None
-    chaves_confrontos = {}
+    bracket = {}
     if comp_id:
         comp_selecionada = Competicao.query.filter_by(id=comp_id, chaves_publicas=True).first()
         if comp_selecionada:
-            chaves, _, _, _ = montar_chaves(comp_id)
-            chaves_confrontos = {
-                categoria: {"total": len(inscricoes), "pares": gerar_confrontos(inscricoes)}
-                for categoria, inscricoes in chaves.items()
-            }
+            bracket = montar_bracket(comp_id)
     return render_template(
         "chaves_publicas.html", competicoes=competicoes,
-        comp_selecionada=comp_selecionada, chaves_confrontos=chaves_confrontos,
+        comp_selecionada=comp_selecionada, bracket=bracket,
     )
 
 
@@ -1004,10 +1001,9 @@ def admin_toggle_chaves_publicas(comp_id):
     return redirect(url_for("admin_chaves", comp_id=comp_id))
 
 
-@app.route("/admin/competicao/<int:comp_id>/acompanhamento")
-@login_required
-@admin_required
-def admin_acompanhamento(comp_id):
+def calcular_cronograma(comp_id):
+    """Distribui as lutas da 1a rodada de cada categoria pelas areas de luta,
+    calculando o horario estimado de cada uma. Retorna (chaves, areas_info)."""
     comp = Competicao.query.get_or_404(comp_id)
     chaves, _, _, _ = montar_chaves(comp_id)
     tempos = {t.chave: t.minutos for t in TempoCategoria.query.filter_by(competicao_id=comp_id).all()}
@@ -1034,12 +1030,69 @@ def admin_acompanhamento(comp_id):
         relogio = inicio_dt
         lista = []
         for luta in lutas_area:
-            lista.append({**luta, "horario": relogio})
+            lista.append({**luta, "horario": relogio, "area": idx})
             if relogio:
                 relogio = relogio + timedelta(minutes=luta["minutos"])
         areas_info.append({"numero": idx, "lutas": lista})
 
-    return render_template("admin/acompanhamento.html", comp=comp, areas=areas_info, total_lutas=len(lutas))
+    return chaves, areas_info
+
+
+def _rotulos_rodadas(qtd_rodadas):
+    """Rotulos das rodadas de um chaveamento eliminatorio simples,
+    da primeira rodada ate a final."""
+    nomes_finais = ["Final", "Semifinal", "Quartas de Final", "Oitavas de Final", "16-avos de Final"]
+    rotulos = []
+    for i in range(qtd_rodadas):
+        pos_do_fim = qtd_rodadas - 1 - i
+        rotulos.append(nomes_finais[pos_do_fim] if pos_do_fim < len(nomes_finais) else f"Rodada {i + 1}")
+    return rotulos
+
+
+def montar_bracket(comp_id):
+    """Monta o chaveamento em arvore por categoria, com area/horario da 1a
+    rodada (reaproveitando o cronograma). As rodadas seguintes ainda nao tem
+    confronto definido, pois o sistema nao registra o resultado das lutas."""
+    chaves, areas_info = calcular_cronograma(comp_id)
+    horarios = {}
+    for area in areas_info:
+        for luta in area["lutas"]:
+            horarios[(luta["chave"], luta["atleta1"].id, luta["atleta2"].id)] = {
+                "area": luta["area"], "horario": luta["horario"],
+            }
+
+    bracket = {}
+    for categoria, inscricoes in chaves.items():
+        total = len(inscricoes)
+        if total < 2:
+            bracket[categoria] = {"total": total, "rodadas": None, "rotulos": []}
+            continue
+        rodada1 = []
+        for insc1, insc2 in gerar_confrontos(inscricoes):
+            info = horarios.get((categoria, insc1.id, insc2.id)) if insc2 else None
+            rodada1.append({
+                "insc1": insc1, "insc2": insc2,
+                "area": info["area"] if info else None,
+                "horario": info["horario"] if info else None,
+            })
+        rodadas = [rodada1]
+        n_slots = len(rodada1)
+        while n_slots > 1:
+            n_slots = math.ceil(n_slots / 2)
+            rodadas.append([{"placeholder": True} for _ in range(n_slots)])
+        bracket[categoria] = {"total": total, "rodadas": rodadas, "rotulos": _rotulos_rodadas(len(rodadas))}
+
+    return bracket
+
+
+@app.route("/admin/competicao/<int:comp_id>/acompanhamento")
+@login_required
+@admin_required
+def admin_acompanhamento(comp_id):
+    comp = Competicao.query.get_or_404(comp_id)
+    _, areas_info = calcular_cronograma(comp_id)
+    total_lutas = sum(len(area["lutas"]) for area in areas_info)
+    return render_template("admin/acompanhamento.html", comp=comp, areas=areas_info, total_lutas=total_lutas)
 
 
 @app.route("/admin/competicao/<int:comp_id>/mesclar-categorias", methods=["POST"])

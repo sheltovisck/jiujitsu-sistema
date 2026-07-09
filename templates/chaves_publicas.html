@@ -31,37 +31,59 @@
 </div>
 
 {% if comp_selecionada %}
-    {% if chaves_confrontos %}
-    <div class="row g-4">
-        {% for categoria, dados in chaves_confrontos.items() %}
-        <div class="col-lg-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <span class="fw-bold"><i class="bi bi-award me-2"></i>{{ categoria }}</span>
-                    <span class="badge bg-light text-dark">{{ dados.total }} atleta(s)</span>
+    {% if bracket %}
+    <div class="d-flex flex-column gap-4">
+        {% for categoria, dados in bracket.items() %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold"><i class="bi bi-award me-2"></i>{{ categoria }}</span>
+                <span class="badge bg-light text-dark">{{ dados.total }} atleta(s)</span>
+            </div>
+            <div class="card-body">
+                {% if not dados.rodadas %}
+                <div class="alert alert-warning py-2 mb-0 small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Apenas 1 atleta nesta categoria. Sem chave disponível.
                 </div>
-                <div class="card-body">
-                    {% if dados.total == 1 %}
-                    <div class="alert alert-warning py-2 mb-0 small">
-                        <i class="bi bi-exclamation-triangle me-1"></i>Apenas 1 atleta nesta categoria. Sem chave disponível.
-                    </div>
-                    {% else %}
-                    <div class="d-flex flex-column gap-2">
-                        {% for insc1, insc2 in dados.pares %}
-                        <div class="confronto-card p-3 rounded border d-flex align-items-center gap-2">
-                            <span class="badge bg-secondary">{{ loop.index }}</span>
-                            <span class="fw-semibold small text-uppercase">{{ insc1.aluno.nome_completo or insc1.aluno.username }}</span>
-                            {% if insc2 %}
-                            <span class="text-muted mx-1">vs</span>
-                            <span class="fw-semibold small text-uppercase">{{ insc2.aluno.nome_completo or insc2.aluno.username }}</span>
-                            {% else %}
-                            <span class="badge bg-success ms-auto">BYE (passa direto)</span>
-                            {% endif %}
+                {% else %}
+                <div class="bracket-wrap">
+                    {% for rodada in dados.rodadas %}
+                    <div class="bracket-round">
+                        <div class="bracket-round-title">{{ dados.rotulos[loop.index0] }}</div>
+                        <div class="bracket-round-matches">
+                            {% for match in rodada %}
+                            <div class="bracket-match">
+                                {% if match.placeholder %}
+                                <div class="bracket-box-placeholder">A definir</div>
+                                {% else %}
+                                <div class="bracket-box">
+                                    <div class="bracket-box-header">
+                                        {% if match.area %}Área {{ match.area }}{% endif %}
+                                        {% if match.horario %} — {{ match.horario.strftime('%d/%m %H:%M') }}{% endif %}
+                                        {% if not match.area and not match.horario %}A definir{% endif %}
+                                    </div>
+                                    <div class="bracket-athlete">
+                                        <div class="bracket-athlete-nome">{{ match.insc1.aluno.nome_completo or match.insc1.aluno.username }}</div>
+                                        <div class="bracket-athlete-academia">{{ match.insc1.aluno.academia or '—' }}</div>
+                                    </div>
+                                    {% if match.insc2 %}
+                                    <div class="bracket-athlete">
+                                        <div class="bracket-athlete-nome">{{ match.insc2.aluno.nome_completo or match.insc2.aluno.username }}</div>
+                                        <div class="bracket-athlete-academia">{{ match.insc2.aluno.academia or '—' }}</div>
+                                    </div>
+                                    {% else %}
+                                    <div class="bracket-athlete">
+                                        <span class="badge bg-success">BYE (passa direto)</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}

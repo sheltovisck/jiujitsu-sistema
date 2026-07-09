@@ -128,6 +128,86 @@ body {
 .table { font-size: 0.9rem; }
 .table thead th { font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; }
 
+/* ─── CHAVEAMENTO (BRACKET) ──────────────────────────────────── */
+.bracket-wrap {
+    display: flex;
+    overflow-x: auto;
+    padding: 0.5rem 0 1.5rem;
+    gap: 2.5rem;
+}
+.bracket-round {
+    display: flex;
+    flex-direction: column;
+    min-width: 240px;
+    flex-shrink: 0;
+}
+.bracket-round-title {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #777;
+    margin-bottom: 1rem;
+}
+.bracket-round-matches {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    gap: 1.25rem;
+}
+.bracket-match {
+    position: relative;
+}
+.bracket-round:not(:last-child) .bracket-match::after {
+    content: '';
+    position: absolute;
+    right: -2.5rem;
+    top: 50%;
+    width: 2.5rem;
+    height: 2px;
+    background: #ccc;
+}
+.bracket-box {
+    background: #1a1a1a;
+    color: #fff;
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.bracket-box-header {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    color: #e74c3c;
+    margin-bottom: 0.4rem;
+}
+.bracket-athlete {
+    padding: 0.3rem 0;
+    border-top: 1px solid rgba(255,255,255,0.12);
+}
+.bracket-athlete:first-of-type { border-top: none; }
+.bracket-athlete-nome {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.bracket-athlete-academia {
+    font-size: 0.72rem;
+    color: #bbb;
+}
+.bracket-box-placeholder {
+    background: #f1f1f1;
+    color: #999;
+    text-align: center;
+    font-size: 0.78rem;
+    padding: 1rem 0.5rem;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+}
+
 /* ─── RESPONSIVE ─────────────────────────────────────────────── */
 @media (max-width: 576px) {
     .hero-section h1 { font-size: 1.8rem; }
