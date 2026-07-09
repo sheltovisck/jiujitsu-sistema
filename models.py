@@ -203,6 +203,7 @@ class Inscricao(db.Model):
     observacoes = db.Column(db.Text)
     presente = db.Column(db.Boolean, default=False)
     checkin_em = db.Column(db.DateTime)
+    ordem_chave = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):

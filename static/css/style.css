@@ -74,6 +74,10 @@ body {
 }
 .confronto-card:hover { background-color: #e9ecef; }
 
+/* ─── ATLETA ARRASTAVEL (reordenar chave) ────────────────────── */
+.atleta-card-draggable { cursor: grab; }
+.atleta-card-draggable:active { cursor: grabbing; }
+
 /* ─── FOOTER ─────────────────────────────────────────────────── */
 .footer-jj {
     background-color: #1a1a1a;

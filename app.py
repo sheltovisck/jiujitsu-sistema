@@ -823,6 +823,7 @@ def montar_chaves(comp_id):
     inscricoes = Inscricao.query.filter_by(
         competicao_id=comp_id
     ).filter(Inscricao.status == "aprovado").all()
+    inscricoes.sort(key=lambda i: (i.ordem_chave or 0, i.id))
     grupos = GrupoPeso.query.filter_by(competicao_id=comp_id).all()
     lutas_casadas = LutaCasada.query.filter_by(competicao_id=comp_id).order_by(LutaCasada.ordem).all()
 
@@ -999,6 +1000,21 @@ def admin_toggle_chaves_publicas(comp_id):
         "success",
     )
     return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+
+@app.route("/admin/competicao/<int:comp_id>/chaves/reordenar", methods=["POST"])
+@login_required
+@admin_required
+def admin_reordenar_chave(comp_id):
+    Competicao.query.get_or_404(comp_id)
+    dados = request.get_json(silent=True) or {}
+    ids_ordenados = dados.get("ordem", [])
+    for posicao, insc_id in enumerate(ids_ordenados):
+        insc = Inscricao.query.filter_by(id=insc_id, competicao_id=comp_id).first()
+        if insc:
+            insc.ordem_chave = posicao
+    db.session.commit()
+    return jsonify({"status": "ok"})
 
 
 def calcular_cronograma(comp_id):
@@ -1336,6 +1352,8 @@ def migrar_banco(engine):
                 )''', 'Tabela lutas_casadas verificada')
         executar(conn, 'ALTER TABLE competicoes ADD COLUMN chaves_publicas BOOLEAN DEFAULT FALSE',
                   'Adicionado: competicoes.chaves_publicas')
+        executar(conn, 'ALTER TABLE inscricoes ADD COLUMN ordem_chave INTEGER DEFAULT 0',
+                  'Adicionado: inscricoes.ordem_chave')
 
 
 def init_db():
