@@ -239,3 +239,19 @@ class TempoCategoria(db.Model):
 
     def __repr__(self):
         return "<TempoCategoria " + self.chave + ">"
+
+
+class LutaCasada(db.Model):
+    """Luta arranjada manualmente entre dois atletas, fora da chave normal
+    de faixa/categoria (ex: super-luta entre atletas de categorias diferentes)."""
+    __tablename__ = "lutas_casadas"
+    id = db.Column(db.Integer, primary_key=True)
+    competicao_id = db.Column(db.Integer, db.ForeignKey("competicoes.id"), nullable=False)
+    ordem = db.Column(db.Integer, nullable=False, default=1)
+    inscricao1_id = db.Column(db.Integer, db.ForeignKey("inscricoes.id"))
+    inscricao2_id = db.Column(db.Integer, db.ForeignKey("inscricoes.id"))
+    inscricao1 = db.relationship("Inscricao", foreign_keys=[inscricao1_id])
+    inscricao2 = db.relationship("Inscricao", foreign_keys=[inscricao2_id])
+
+    def __repr__(self):
+        return "<LutaCasada " + str(self.id) + ">"

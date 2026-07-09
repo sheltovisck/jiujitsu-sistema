@@ -4,7 +4,7 @@ from flask_mail import Mail, Message
 from datetime import datetime, date, timedelta
 from models import (
     db, User, Competicao, Inscricao, Academia, Professor, HistoricoFaixa, Configuracao,
-    GrupoPeso, TempoCategoria, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
+    GrupoPeso, TempoCategoria, LutaCasada, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
 )
 import os
 import secrets
@@ -123,24 +123,26 @@ def listagem_inscritos():
         {i.aluno.professor_obj for i in todas if i.aluno.professor_obj},
         key=lambda p: p.nome,
     )
-    faixas = sorted({i.faixa_inscricao for i in todas if i.faixa_inscricao})
+    faixas = sorted({faixa_base(i.faixa_inscricao) for i in todas if i.faixa_inscricao})
     categorias = sorted(
         {i.categoria_peso for i in todas if i.categoria_peso},
         key=lambda c: ORDEM_CATEGORIAS_PESO.index(c) if c in ORDEM_CATEGORIAS_PESO else 99,
     )
 
-    query = base_query
+    inscricoes = todas
     if professor_id:
-        query = query.filter(User.professor_id == professor_id)
+        inscricoes = [i for i in inscricoes if i.aluno.professor_id == professor_id]
     if faixa_filtro:
-        query = query.filter(Inscricao.faixa_inscricao == faixa_filtro)
+        inscricoes = [i for i in inscricoes if faixa_base(i.faixa_inscricao) == faixa_filtro]
     if categoria_filtro:
-        query = query.filter(Inscricao.categoria_peso == categoria_filtro)
+        inscricoes = [i for i in inscricoes if i.categoria_peso == categoria_filtro]
     if sexo_filtro:
-        query = query.filter(User.sexo == sexo_filtro)
-    inscricoes = query.order_by(
-        Inscricao.faixa_inscricao, Inscricao.categoria_peso, User.nome_completo
-    ).all()
+        inscricoes = [i for i in inscricoes if i.aluno.sexo == sexo_filtro]
+    inscricoes.sort(key=lambda i: (
+        faixa_base(i.faixa_inscricao) or "",
+        i.categoria_peso or "",
+        i.aluno.nome_completo or i.aluno.username or "",
+    ))
 
     return render_template(
         "inscritos.html", competicoes=competicoes, comp_selecionada=comp_selecionada,
@@ -765,6 +767,9 @@ def faixa_base(faixa_inscricao):
     return faixa_inscricao.split(" - ")[0].strip()
 
 
+app.jinja_env.globals["faixa_base"] = faixa_base
+
+
 def sexo_label(sexo):
     if sexo == "M":
         return "Masculino"
@@ -795,14 +800,26 @@ def _categoria_para_grupo(grupos, faixa, sexo, categoria):
 
 def montar_chaves(comp_id):
     """Monta as chaves (faixa+sexo+categoria, ja mescladas) com as inscricoes aprovadas.
-    Sexo entra na chave para nunca confrontar atletas de sexos diferentes."""
+    Sexo entra na chave para nunca confrontar atletas de sexos diferentes.
+    Atletas escalados em lutas casadas saem da contagem/chave normal da sua
+    categoria e viram uma chave separada chamada 'Luta Casada'."""
     inscricoes = Inscricao.query.filter_by(
         competicao_id=comp_id
     ).filter(Inscricao.status == "aprovado").all()
     grupos = GrupoPeso.query.filter_by(competicao_id=comp_id).all()
+    lutas_casadas = LutaCasada.query.filter_by(competicao_id=comp_id).order_by(LutaCasada.ordem).all()
+
+    ids_luta_casada = set()
+    for lc in lutas_casadas:
+        if lc.inscricao1_id:
+            ids_luta_casada.add(lc.inscricao1_id)
+        if lc.inscricao2_id:
+            ids_luta_casada.add(lc.inscricao2_id)
 
     contagens = {}
     for insc in inscricoes:
+        if insc.id in ids_luta_casada:
+            continue
         faixa = faixa_base(insc.faixa_inscricao)
         sexo = insc.aluno.sexo or ""
         categoria = insc.categoria_peso or ""
@@ -821,6 +838,8 @@ def montar_chaves(comp_id):
 
     chaves = {}
     for insc in inscricoes:
+        if insc.id in ids_luta_casada:
+            continue
         faixa = faixa_base(insc.faixa_inscricao)
         sexo = insc.aluno.sexo or ""
         categoria = insc.categoria_peso or ""
@@ -832,7 +851,15 @@ def montar_chaves(comp_id):
         chave = faixa + " | " + sexo_label(sexo) + " | " + rotulo_categoria
         chaves.setdefault(chave, []).append(insc)
 
-    return chaves, grupos, categorias_ordenadas
+    pares_luta_casada = []
+    for lc in lutas_casadas:
+        if lc.inscricao1_id and lc.inscricao2_id:
+            pares_luta_casada.append(lc.inscricao1)
+            pares_luta_casada.append(lc.inscricao2)
+    if pares_luta_casada:
+        chaves["Luta Casada"] = pares_luta_casada
+
+    return chaves, grupos, categorias_ordenadas, lutas_casadas
 
 
 def gerar_confrontos(inscricoes):
@@ -851,13 +878,63 @@ def gerar_confrontos(inscricoes):
 @admin_required
 def admin_chaves(comp_id):
     comp = Competicao.query.get_or_404(comp_id)
-    chaves, grupos, categorias_ordenadas = montar_chaves(comp_id)
+    chaves, grupos, categorias_ordenadas, lutas_casadas = montar_chaves(comp_id)
     tempos = {t.chave: t.minutos for t in TempoCategoria.query.filter_by(competicao_id=comp_id).all()}
+    inscritos_disponiveis = Inscricao.query.filter_by(
+        competicao_id=comp_id, status="aprovado"
+    ).join(User).order_by(User.nome_completo).all()
 
     return render_template(
         "admin/chaves.html", comp=comp, chaves=chaves,
         categorias_ordenadas=categorias_ordenadas, grupos=grupos, tempos=tempos,
+        lutas_casadas=lutas_casadas, inscritos_disponiveis=inscritos_disponiveis,
     )
+
+
+@app.route("/admin/competicao/<int:comp_id>/lutas-casadas/quantidade", methods=["POST"])
+@login_required
+@admin_required
+def admin_definir_qtd_lutas_casadas(comp_id):
+    Competicao.query.get_or_404(comp_id)
+    quantidade = request.form.get("quantidade", type=int) or 0
+    quantidade = max(0, min(quantidade, 50))
+    atuais = LutaCasada.query.filter_by(competicao_id=comp_id).order_by(LutaCasada.ordem).all()
+    if quantidade < len(atuais):
+        for lc in atuais[quantidade:]:
+            db.session.delete(lc)
+    elif quantidade > len(atuais):
+        for i in range(len(atuais) + 1, quantidade + 1):
+            db.session.add(LutaCasada(competicao_id=comp_id, ordem=i))
+    db.session.commit()
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+
+@app.route("/admin/competicao/<int:comp_id>/lutas-casadas/salvar", methods=["POST"])
+@login_required
+@admin_required
+def admin_salvar_lutas_casadas(comp_id):
+    Competicao.query.get_or_404(comp_id)
+    lutas = LutaCasada.query.filter_by(competicao_id=comp_id).order_by(LutaCasada.ordem).all()
+    escolhidos = set()
+    novos_valores = {}
+    for lc in lutas:
+        a1 = request.form.get(f"atleta1_{lc.id}", type=int)
+        a2 = request.form.get(f"atleta2_{lc.id}", type=int)
+        if a1 and a2 and a1 == a2:
+            flash(f"Luta casada {lc.ordem}: nao e possivel escalar o mesmo atleta nas duas caixas.", "danger")
+            return redirect(url_for("admin_chaves", comp_id=comp_id))
+        for a in (a1, a2):
+            if a:
+                if a in escolhidos:
+                    flash("Um atleta nao pode ser escalado em mais de uma luta casada.", "danger")
+                    return redirect(url_for("admin_chaves", comp_id=comp_id))
+                escolhidos.add(a)
+        novos_valores[lc.id] = (a1, a2)
+    for lc in lutas:
+        lc.inscricao1_id, lc.inscricao2_id = novos_valores[lc.id]
+    db.session.commit()
+    flash("Lutas casadas atualizadas com sucesso!", "success")
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
 
 
 @app.route("/admin/competicao/<int:comp_id>/parametros", methods=["POST"])
@@ -898,7 +975,7 @@ def admin_salvar_parametros_campeonato(comp_id):
 @admin_required
 def admin_acompanhamento(comp_id):
     comp = Competicao.query.get_or_404(comp_id)
-    chaves, _, _ = montar_chaves(comp_id)
+    chaves, _, _, _ = montar_chaves(comp_id)
     tempos = {t.chave: t.minutos for t in TempoCategoria.query.filter_by(competicao_id=comp_id).all()}
     num_areas = comp.num_areas or 1
 
@@ -1163,6 +1240,13 @@ def migrar_banco(engine):
                     chave VARCHAR(120) NOT NULL,
                     minutos INTEGER NOT NULL DEFAULT 5
                 )''', 'Tabela tempos_categoria verificada')
+        executar(conn, f'''CREATE TABLE IF NOT EXISTS lutas_casadas (
+                    id {autoincrement},
+                    competicao_id INTEGER NOT NULL REFERENCES competicoes(id),
+                    ordem INTEGER NOT NULL DEFAULT 1,
+                    inscricao1_id INTEGER REFERENCES inscricoes(id),
+                    inscricao2_id INTEGER REFERENCES inscricoes(id)
+                )''', 'Tabela lutas_casadas verificada')
 
 
 def init_db():

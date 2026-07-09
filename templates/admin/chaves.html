@@ -46,6 +46,62 @@
 </div>
 </form>
 
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <span class="fw-bold"><i class="bi bi-heart-fill me-2 text-danger"></i>Lutas Casadas</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small">Monte lutas arranjadas manualmente entre dois atletas quaisquer, fora das chaves normais de faixa/categoria. Um atleta escalado aqui sai da contagem da sua categoria original.</p>
+        <form method="POST" action="{{ url_for('admin_definir_qtd_lutas_casadas', comp_id=comp.id) }}" class="row g-2 align-items-end mb-4">
+            <div class="col-auto">
+                <label class="form-label small fw-semibold">Quantidade de lutas casadas</label>
+                <input type="number" name="quantidade" min="0" max="50" class="form-control" style="width:120px" value="{{ lutas_casadas|length }}">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-dark">Definir quantidade</button>
+            </div>
+        </form>
+
+        {% if lutas_casadas %}
+        <form method="POST" action="{{ url_for('admin_salvar_lutas_casadas', comp_id=comp.id) }}">
+            <div class="d-flex flex-column gap-3">
+                {% for lc in lutas_casadas %}
+                <div class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        <span class="badge bg-dark">Luta {{ lc.ordem }}</span>
+                    </div>
+                    <div class="col-md-5">
+                        <select name="atleta1_{{ lc.id }}" class="form-select form-select-sm luta-casada-select">
+                            <option value="">Selecionar atleta 1...</option>
+                            {% for insc in inscritos_disponiveis %}
+                            <option value="{{ insc.id }}" {% if lc.inscricao1_id == insc.id %}selected{% endif %}>
+                                {{ insc.aluno.nome_completo or insc.aluno.username }} — {{ faixa_base(insc.faixa_inscricao) }} / {{ insc.categoria_peso }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto fw-bold text-muted">X</div>
+                    <div class="col-md-5">
+                        <select name="atleta2_{{ lc.id }}" class="form-select form-select-sm luta-casada-select">
+                            <option value="">Selecionar atleta 2...</option>
+                            {% for insc in inscritos_disponiveis %}
+                            <option value="{{ insc.id }}" {% if lc.inscricao2_id == insc.id %}selected{% endif %}>
+                                {{ insc.aluno.nome_completo or insc.aluno.username }} — {{ faixa_base(insc.faixa_inscricao) }} / {{ insc.categoria_peso }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-danger btn-sm mt-3">
+                <i class="bi bi-save me-1"></i>Salvar Lutas Casadas
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
 {% if categorias_ordenadas %}
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white">
@@ -196,4 +252,25 @@
     </a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Impede que o mesmo atleta seja escalado em mais de uma caixa de luta casada
+function atualizarSelectsLutaCasada() {
+    const selects = document.querySelectorAll('.luta-casada-select');
+    const selecionados = new Set();
+    selects.forEach(function(s) { if (s.value) selecionados.add(s.value); });
+    selects.forEach(function(s) {
+        Array.from(s.options).forEach(function(opt) {
+            if (!opt.value) return;
+            opt.disabled = selecionados.has(opt.value) && opt.value !== s.value;
+        });
+    });
+}
+document.querySelectorAll('.luta-casada-select').forEach(function(s) {
+    s.addEventListener('change', atualizarSelectsLutaCasada);
+});
+atualizarSelectsLutaCasada();
+</script>
 {% endblock %}

@@ -82,7 +82,7 @@
                     <div class="text-muted small">{{ insc.competicao.nome }}</div>
                     {% endif %}
                     <div class="small mt-2">
-                        <span class="badge bg-light text-dark border">{{ insc.faixa_inscricao or '—' }}</span>
+                        <span class="badge bg-light text-dark border">{{ faixa_base(insc.faixa_inscricao) or '—' }}</span>
                         <span class="badge bg-light text-dark border">{{ insc.categoria_peso or '—' }}</span>
                     </div>
                 </div>
@@ -116,7 +116,7 @@
                         {% if not comp_selecionada %}
                         <td class="small">{{ insc.competicao.nome }}</td>
                         {% endif %}
-                        <td class="small">{{ insc.faixa_inscricao or '—' }}</td>
+                        <td class="small">{{ faixa_base(insc.faixa_inscricao) or '—' }}</td>
                         <td class="pe-3 small">{{ insc.categoria_peso or '—' }}</td>
                     </tr>
                     {% else %}
