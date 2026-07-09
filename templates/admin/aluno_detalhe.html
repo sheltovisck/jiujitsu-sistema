@@ -13,6 +13,7 @@
             {% if aluno.is_professor %}<span class="badge bg-success ms-1"><i class="bi bi-person-check me-1"></i>Professor</span>{% endif %}
         </p>
     </div>
+    {% if current_user.is_admin %}
     <form method="POST" action="{{ url_for('admin_toggle_professor_user', user_id=aluno.id) }}">
         <button type="submit" class="btn btn-sm {% if aluno.is_professor %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
             <i class="bi bi-person-{% if aluno.is_professor %}dash{% else %}check{% endif %} me-1"></i>
@@ -25,6 +26,7 @@
             <i class="bi bi-key me-1"></i>Resetar Senha
         </button>
     </form>
+    {% endif %}
 </div>
 
 <div class="row g-4">
@@ -49,17 +51,62 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-danger text-white fw-bold"><i class="bi bi-award me-2"></i>Dados de Jiu-Jitsu</div>
             <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tr><td class="text-muted">Academia:</td><td class="fw-semibold">{{ aluno.academia or '—' }}</td></tr>
-                    <tr><td class="text-muted">Professor:</td><td>{{ aluno.professor or '—' }}</td></tr>
-                    <tr><td class="text-muted">Faixa:</td><td>
-                        {% if aluno.faixa %}
-                        <span class="badge faixa-badge faixa-{{ aluno.faixa.lower().replace(' ', '-') }}">{{ aluno.faixa }}{% if aluno.grau %} {{ aluno.grau }}º grau{% endif %}</span>
-                        {% else %}—{% endif %}
-                    </td></tr>
-                    <tr><td class="text-muted">Peso:</td><td>{{ aluno.peso ~ ' kg' if aluno.peso else '—' }}</td></tr>
-                    <tr><td class="text-muted">Categoria:</td><td><strong>{{ aluno.get_categoria_peso() }}</strong></td></tr>
-                </table>
+                <form method="POST" action="{{ url_for('admin_editar_aluno_jj', user_id=aluno.id) }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Academia</label>
+                        <select name="academia_id" id="academiaSelect" class="form-select form-select-sm">
+                            <option value="">Selecionar academia...</option>
+                            {% for ac in academias %}
+                            <option value="{{ ac.id }}" {% if aluno.academia_id == ac.id %}selected{% endif %}>{{ ac.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Professor</label>
+                        <select name="professor_id" id="professorSelect" class="form-select form-select-sm">
+                            <option value="">Selecionar professor...</option>
+                            {% for prof in professores %}
+                            {% if not aluno.academia_id or prof.academia_id == aluno.academia_id %}
+                            <option value="{{ prof.id }}" {% if aluno.professor_id == prof.id %}selected{% endif %}>{{ prof.nome }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label class="form-label fw-semibold small">Faixa</label>
+                            <select name="faixa" id="faixaSelect" class="form-select form-select-sm">
+                                <option value="">Selecionar...</option>
+                                {% for f in ['Branca','Cinza','Amarela','Laranja','Verde','Azul','Roxa','Marrom','Preta','Vermelha e Preta','Vermelha e Branca','Vermelha'] %}
+                                <option value="{{ f }}" {% if aluno.faixa == f %}selected{% endif %}>{{ f }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-5" id="grauWrapper">
+                            <label class="form-label fw-semibold small">Grau</label>
+                            <select name="grau" class="form-select form-select-sm">
+                                <option value="">Sem grau</option>
+                                {% for g in range(1, 5) %}
+                                <option value="{{ g }}" {% if aluno.grau == g|string %}selected{% endif %}>{{ g }}o grau</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Peso atual (kg)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" name="peso" class="form-control" value="{{ aluno.peso or '' }}"
+                                   placeholder="Ex: 72.5" step="0.1" min="30" max="200">
+                            <span class="input-group-text">kg</span>
+                        </div>
+                    </div>
+                    {% if aluno.peso %}
+                    <div class="small text-muted mb-3">Categoria: <strong>{{ aluno.get_categoria_peso() }}</strong></div>
+                    {% endif %}
+                    <button type="submit" class="btn btn-danger btn-sm w-100">
+                        <i class="bi bi-save me-1"></i>Salvar Dados de Jiu-Jitsu
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -100,4 +147,53 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Mostrar grau apenas para faixa preta
+const faixaSelect = document.getElementById('faixaSelect');
+const grauWrapper = document.getElementById('grauWrapper');
+function toggleGrau() {
+    if (faixaSelect.value === 'Preta') {
+        grauWrapper.style.display = '';
+    } else {
+        grauWrapper.style.display = 'none';
+        grauWrapper.querySelector('select').value = '';
+    }
+}
+if (faixaSelect && grauWrapper) {
+    faixaSelect.addEventListener('change', toggleGrau);
+    toggleGrau();
+}
+// Filtrar professores ao trocar academia
+const academiaSelect = document.getElementById('academiaSelect');
+const professorSelect = document.getElementById('professorSelect');
+if (academiaSelect && professorSelect) {
+    academiaSelect.addEventListener('change', function() {
+        const acadId = this.value;
+        const profAtual = professorSelect.value;
+        professorSelect.innerHTML = '<option value="">Carregando...</option>';
+        if (!acadId) {
+            professorSelect.innerHTML = '<option value="">Selecionar professor...</option>';
+            return;
+        }
+        fetch('/api/professores/' + acadId)
+            .then(r => r.json())
+            .then(profs => {
+                professorSelect.innerHTML = '<option value="">Selecionar professor...</option>';
+                profs.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.nome;
+                    if (p.id == profAtual) opt.selected = true;
+                    professorSelect.appendChild(opt);
+                });
+                if (profs.length === 0) {
+                    professorSelect.innerHTML = '<option value="">Nenhum professor nesta academia</option>';
+                }
+            });
+    });
+}
+</script>
 {% endblock %}

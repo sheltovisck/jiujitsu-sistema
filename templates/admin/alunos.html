@@ -41,7 +41,7 @@
                         <td>
                             {% if aluno.faixa %}
                             <span class="badge faixa-badge faixa-{{ aluno.faixa.lower().replace(' ', '-') }}">
-                                {{ aluno.faixa }}{% if aluno.grau %} {{ aluno.grau }}º{% endif %}
+                                {{ aluno.faixa }}
                             </span>
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>

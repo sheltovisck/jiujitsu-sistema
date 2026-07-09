@@ -9,11 +9,11 @@
 <!-- Filtros -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body py-3">
-        <form method="GET" class="row g-2 align-items-end">
+        <form method="GET" id="filtrosForm" class="row g-2 align-items-end">
             <div class="col-md-3">
-                <label class="form-label fw-semibold small">Selecione o campeonato</label>
-                <select name="comp" class="form-select" required>
-                    <option value="">Escolha uma competição...</option>
+                <label class="form-label fw-semibold small">Campeonato</label>
+                <select name="comp" class="form-select">
+                    <option value="">Todos os campeonatos</option>
                     {% for comp in competicoes %}
                     <option value="{{ comp.id }}" {% if comp_selecionada and comp.id == comp_selecionada.id %}selected{% endif %}>
                         {{ comp.nome }} — {{ comp.data.strftime('%d/%m/%Y') }}
@@ -23,7 +23,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label fw-semibold small">Professor</label>
-                <select name="professor" class="form-select" {% if not comp_selecionada %}disabled{% endif %}>
+                <select name="professor" class="form-select">
                     <option value="">Todos</option>
                     {% for prof in professores %}
                     <option value="{{ prof.id }}" {% if professor_filtro == prof.id %}selected{% endif %}>{{ prof.nome }}</option>
@@ -32,7 +32,7 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label fw-semibold small">Faixa</label>
-                <select name="faixa" class="form-select" {% if not comp_selecionada %}disabled{% endif %}>
+                <select name="faixa" class="form-select">
                     <option value="">Todas</option>
                     {% for f in faixas %}
                     <option value="{{ f }}" {% if faixa_filtro == f %}selected{% endif %}>{{ f }}</option>
@@ -41,7 +41,7 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label fw-semibold small">Categoria</label>
-                <select name="categoria" class="form-select" {% if not comp_selecionada %}disabled{% endif %}>
+                <select name="categoria" class="form-select">
                     <option value="">Todas</option>
                     {% for c in categorias %}
                     <option value="{{ c }}" {% if categoria_filtro == c %}selected{% endif %}>{{ c }}</option>
@@ -50,7 +50,7 @@
             </div>
             <div class="col-md-1">
                 <label class="form-label fw-semibold small">Sexo</label>
-                <select name="sexo" class="form-select" {% if not comp_selecionada %}disabled{% endif %}>
+                <select name="sexo" class="form-select">
                     <option value="">Todos</option>
                     <option value="M" {% if sexo_filtro == 'M' %}selected{% endif %}>Masc.</option>
                     <option value="F" {% if sexo_filtro == 'F' %}selected{% endif %}>Fem.</option>
@@ -65,10 +65,9 @@
     </div>
 </div>
 
-{% if comp_selecionada %}
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-        <span class="fw-bold">{{ comp_selecionada.nome }}</span>
+        <span class="fw-bold">{{ comp_selecionada.nome if comp_selecionada else 'Todos os campeonatos' }}</span>
         <span class="badge bg-success">{{ inscricoes|length }} inscrito(s)</span>
     </div>
     <div class="card-body p-0">
@@ -77,8 +76,11 @@
             {% for insc in inscricoes %}
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <div class="fw-semibold">{{ insc.aluno.nome_completo or insc.aluno.username }}</div>
+                    <div class="fw-semibold text-uppercase">{{ insc.aluno.nome_completo or insc.aluno.username }}</div>
                     <div class="text-muted small">{{ insc.aluno.academia or '—' }}</div>
+                    {% if not comp_selecionada %}
+                    <div class="text-muted small">{{ insc.competicao.nome }}</div>
+                    {% endif %}
                     <div class="small mt-2">
                         <span class="badge bg-light text-dark border">{{ insc.faixa_inscricao or '—' }}</span>
                         <span class="badge bg-light text-dark border">{{ insc.categoria_peso or '—' }}</span>
@@ -99,6 +101,9 @@
                     <tr>
                         <th class="ps-3">Atleta</th>
                         <th>Academia</th>
+                        {% if not comp_selecionada %}
+                        <th>Campeonato</th>
+                        {% endif %}
                         <th>Faixa</th>
                         <th class="pe-3">Categoria de Peso</th>
                     </tr>
@@ -106,13 +111,16 @@
                 <tbody>
                     {% for insc in inscricoes %}
                     <tr>
-                        <td class="ps-3 fw-semibold">{{ insc.aluno.nome_completo or insc.aluno.username }}</td>
+                        <td class="ps-3 fw-semibold text-uppercase">{{ insc.aluno.nome_completo or insc.aluno.username }}</td>
                         <td class="small">{{ insc.aluno.academia or '—' }}</td>
+                        {% if not comp_selecionada %}
+                        <td class="small">{{ insc.competicao.nome }}</td>
+                        {% endif %}
                         <td class="small">{{ insc.faixa_inscricao or '—' }}</td>
                         <td class="pe-3 small">{{ insc.categoria_peso or '—' }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4" class="text-center py-5 text-muted">
+                    <tr><td colspan="{{ 4 if comp_selecionada else 5 }}" class="text-center py-5 text-muted">
                         <i class="bi bi-people fs-1 d-block mb-2"></i>Nenhum inscrito encontrado.
                     </td></tr>
                     {% endfor %}
@@ -121,10 +129,14 @@
         </div>
     </div>
 </div>
-{% else %}
-<div class="text-center py-5 text-muted">
-    <i class="bi bi-clipboard-data fs-1 d-block mb-3"></i>
-    <h5>Escolha um campeonato para ver os inscritos</h5>
-</div>
-{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('#filtrosForm select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        sel.form.submit();
+    });
+});
+</script>
 {% endblock %}

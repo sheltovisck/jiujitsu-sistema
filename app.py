@@ -113,36 +113,35 @@ def listagem_inscritos():
     faixa_filtro = request.args.get("faixa", "").strip()
     categoria_filtro = request.args.get("categoria", "").strip()
     sexo_filtro = request.args.get("sexo", "").strip()
-    comp_selecionada = None
-    inscricoes = []
-    professores = []
-    faixas = []
-    categorias = []
+    comp_selecionada = Competicao.query.get_or_404(comp_id) if comp_id else None
+
+    base_query = Inscricao.query.filter_by(status="aprovado").join(User)
     if comp_id:
-        comp_selecionada = Competicao.query.get_or_404(comp_id)
-        base_query = Inscricao.query.filter_by(competicao_id=comp_id, status="aprovado").join(User)
-        todas_comp = base_query.all()
-        professores = sorted(
-            {i.aluno.professor_obj for i in todas_comp if i.aluno.professor_obj},
-            key=lambda p: p.nome,
-        )
-        faixas = sorted({i.faixa_inscricao for i in todas_comp if i.faixa_inscricao})
-        categorias = sorted(
-            {i.categoria_peso for i in todas_comp if i.categoria_peso},
-            key=lambda c: ORDEM_CATEGORIAS_PESO.index(c) if c in ORDEM_CATEGORIAS_PESO else 99,
-        )
-        query = base_query
-        if professor_id:
-            query = query.filter(User.professor_id == professor_id)
-        if faixa_filtro:
-            query = query.filter(Inscricao.faixa_inscricao == faixa_filtro)
-        if categoria_filtro:
-            query = query.filter(Inscricao.categoria_peso == categoria_filtro)
-        if sexo_filtro:
-            query = query.filter(User.sexo == sexo_filtro)
-        inscricoes = query.order_by(
-            Inscricao.faixa_inscricao, Inscricao.categoria_peso, User.nome_completo
-        ).all()
+        base_query = base_query.filter(Inscricao.competicao_id == comp_id)
+    todas = base_query.all()
+    professores = sorted(
+        {i.aluno.professor_obj for i in todas if i.aluno.professor_obj},
+        key=lambda p: p.nome,
+    )
+    faixas = sorted({i.faixa_inscricao for i in todas if i.faixa_inscricao})
+    categorias = sorted(
+        {i.categoria_peso for i in todas if i.categoria_peso},
+        key=lambda c: ORDEM_CATEGORIAS_PESO.index(c) if c in ORDEM_CATEGORIAS_PESO else 99,
+    )
+
+    query = base_query
+    if professor_id:
+        query = query.filter(User.professor_id == professor_id)
+    if faixa_filtro:
+        query = query.filter(Inscricao.faixa_inscricao == faixa_filtro)
+    if categoria_filtro:
+        query = query.filter(Inscricao.categoria_peso == categoria_filtro)
+    if sexo_filtro:
+        query = query.filter(User.sexo == sexo_filtro)
+    inscricoes = query.order_by(
+        Inscricao.faixa_inscricao, Inscricao.categoria_peso, User.nome_completo
+    ).all()
+
     return render_template(
         "inscritos.html", competicoes=competicoes, comp_selecionada=comp_selecionada,
         inscricoes=inscricoes, professores=professores, faixas=faixas, categorias=categorias,
@@ -238,7 +237,8 @@ def perfil():
         current_user.cidade = request.form.get("cidade", "").strip()
         current_user.estado = request.form.get("estado", "")
         current_user.faixa = request.form.get("faixa", "")
-        current_user.grau = request.form.get("grau", "")
+        grau = request.form.get("grau", "")
+        current_user.grau = grau if current_user.faixa == "Preta" else ""
         academia_id = request.form.get("academia_id", "")
         professor_id = request.form.get("professor_id", "")
         current_user.academia_id = int(academia_id) if academia_id else None
@@ -270,7 +270,7 @@ def historico_faixa():
         if not faixa:
             flash("Faixa e obrigatoria.", "danger")
             return redirect(url_for("historico_faixa"))
-        grau = request.form.get("grau", "").strip()
+        grau = request.form.get("grau", "").strip() if faixa == "Preta" else ""
         professor_nome = request.form.get("professor_nome", "").strip()
         observacoes = request.form.get("observacoes", "").strip()
         data_str = request.form.get("data_graduacao", "")
@@ -495,18 +495,53 @@ def admin_dashboard():
 
 @app.route("/admin/alunos")
 @login_required
-@admin_required
+@professor_required
 def admin_alunos():
-    alunos = User.query.filter_by(is_admin=False).order_by(User.nome_completo).all()
+    query = User.query.filter_by(is_admin=False)
+    if not current_user.is_admin:
+        query = query.filter_by(professor_id=current_user.professor_id)
+    alunos = query.order_by(User.nome_completo).all()
     return render_template("admin/alunos.html", alunos=alunos)
 
 
 @app.route("/admin/aluno/<int:user_id>")
 @login_required
-@admin_required
+@professor_required
 def admin_aluno_detalhe(user_id):
     aluno = User.query.get_or_404(user_id)
-    return render_template("admin/aluno_detalhe.html", aluno=aluno)
+    if not current_user.is_admin and aluno.professor_id != current_user.professor_id:
+        abort(403)
+    academias = Academia.query.filter_by(ativa=True).order_by(Academia.nome).all()
+    professores = Professor.query.filter_by(ativo=True).order_by(Professor.nome).all()
+    return render_template("admin/aluno_detalhe.html", aluno=aluno, academias=academias, professores=professores)
+
+
+@app.route("/admin/aluno/<int:user_id>/editar-jj", methods=["POST"])
+@login_required
+@professor_required
+def admin_editar_aluno_jj(user_id):
+    aluno = User.query.get_or_404(user_id)
+    if not current_user.is_admin and aluno.professor_id != current_user.professor_id:
+        abort(403)
+    academia_id = request.form.get("academia_id", "")
+    professor_id = request.form.get("professor_id", "")
+    aluno.academia_id = int(academia_id) if academia_id else None
+    aluno.professor_id = int(professor_id) if professor_id else None
+    aluno.faixa = request.form.get("faixa", "")
+    grau = request.form.get("grau", "")
+    aluno.grau = grau if aluno.faixa == "Preta" else ""
+    peso_str = request.form.get("peso", "").strip().replace(",", ".")
+    if peso_str:
+        try:
+            aluno.peso = float(peso_str)
+        except ValueError:
+            flash("Peso invalido.", "danger")
+            return redirect(url_for("admin_aluno_detalhe", user_id=user_id))
+    else:
+        aluno.peso = None
+    db.session.commit()
+    flash("Dados de Jiu-Jitsu atualizados com sucesso!", "success")
+    return redirect(url_for("admin_aluno_detalhe", user_id=user_id))
 
 
 @app.route("/admin/academias", methods=["GET", "POST"])
@@ -738,6 +773,18 @@ def sexo_label(sexo):
     return "Nao informado"
 
 
+ORDEM_FAIXAS_MESCLAGEM = ["Preta", "Marrom", "Roxa", "Azul", "Branca"]
+
+
+def _ordem_faixa_sexo(chave):
+    """Ordena por sexo (Masculino, Feminino, outros) e, dentro de cada bloco,
+    pela ordem de faixas Preta > Marrom > Roxa > Azul > Branca."""
+    faixa, sexo = chave
+    ordem_sexo = {"M": 0, "F": 1}.get(sexo, 2)
+    ordem_faixa = ORDEM_FAIXAS_MESCLAGEM.index(faixa) if faixa in ORDEM_FAIXAS_MESCLAGEM else len(ORDEM_FAIXAS_MESCLAGEM)
+    return (ordem_sexo, ordem_faixa, faixa)
+
+
 def _categoria_para_grupo(grupos, faixa, sexo, categoria):
     """Retorna o GrupoPeso que contem essa categoria+faixa+sexo, se houver."""
     for g in grupos:
@@ -763,13 +810,14 @@ def montar_chaves(comp_id):
         contagens[(faixa, sexo)][categoria] += 1
 
     categorias_ordenadas = {}
-    for (faixa, sexo), cats in contagens.items():
+    for chave in sorted(contagens.keys(), key=_ordem_faixa_sexo):
+        cats = contagens[chave]
         ordenadas = sorted(
             cats.items(),
             key=lambda item: ORDEM_CATEGORIAS_PESO.index(item[0])
             if item[0] in ORDEM_CATEGORIAS_PESO else len(ORDEM_CATEGORIAS_PESO),
         )
-        categorias_ordenadas[(faixa, sexo)] = ordenadas
+        categorias_ordenadas[chave] = ordenadas
 
     chaves = {}
     for insc in inscricoes:

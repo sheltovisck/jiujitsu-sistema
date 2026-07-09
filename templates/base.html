@@ -41,6 +41,7 @@
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_inscricoes') }}"><i class="bi bi-clipboard-check me-1"></i>Inscricoes</a></li>
                     {% elif current_user.is_professor %}
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('professor_inscricoes') }}"><i class="bi bi-clipboard-check me-1"></i>Inscricoes</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_alunos') }}"><i class="bi bi-people me-1"></i>Meus Alunos</a></li>
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('perfil') }}"><i class="bi bi-person me-1"></i>Perfil</a></li>
                     {% else %}
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-house me-1"></i>Inicio</a></li>

@@ -53,17 +53,21 @@
     </div>
     <div class="card-body">
         <p class="text-muted small">Selecione 2 ou mais categorias adjacentes da mesma faixa e do mesmo sexo, e mescle-as em uma única chave.</p>
+        {% set ns = namespace(sexo_atual=none) %}
         {% for chave_grupo, cats in categorias_ordenadas.items() %}
         {% set faixa, sexo = chave_grupo %}
+        {% if sexo != ns.sexo_atual %}
+            {% if not loop.first %}<hr class="my-3">{% endif %}
+            <h6 class="fw-bold text-uppercase small mb-3 {{ 'text-primary' if sexo == 'M' else 'text-danger' if sexo == 'F' else 'text-secondary' }}">
+                <i class="bi bi-{{ 'gender-male' if sexo == 'M' else 'gender-female' if sexo == 'F' else 'question-circle' }} me-1"></i>
+                {{ 'Masculino' if sexo == 'M' else 'Feminino' if sexo == 'F' else 'Nao informado' }}
+            </h6>
+            {% set ns.sexo_atual = sexo %}
+        {% endif %}
         <form method="POST" action="{{ url_for('admin_mesclar_categorias', comp_id=comp.id) }}" class="mb-3 pb-3 border-bottom">
             <input type="hidden" name="faixa" value="{{ faixa }}">
             <input type="hidden" name="sexo" value="{{ sexo }}">
-            <div class="fw-semibold small mb-2">
-                {{ faixa }}
-                <span class="badge {{ 'bg-primary' if sexo == 'M' else 'bg-danger' if sexo == 'F' else 'bg-secondary' }} ms-1">
-                    {{ 'Masculino' if sexo == 'M' else 'Feminino' if sexo == 'F' else 'Nao informado' }}
-                </span>
-            </div>
+            <div class="fw-semibold small mb-2">{{ faixa }}</div>
             <div class="d-flex flex-wrap gap-3 align-items-center">
                 {% for categoria, qtd in cats %}
                 <div class="form-check">
