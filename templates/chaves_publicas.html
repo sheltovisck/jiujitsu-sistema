@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Chaves de Luta - JJ System{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="fw-bold mb-0"><i class="bi bi-diagram-3 me-2 text-danger"></i>Chaves de Luta</h2>
+</div>
+
+<!-- Filtro -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <form method="GET" id="filtroCompForm" class="row g-2 align-items-end">
+            <div class="col-md-9">
+                <label class="form-label fw-semibold small">Campeonato</label>
+                <select name="comp" class="form-select">
+                    <option value="">Selecione um campeonato...</option>
+                    {% for comp in competicoes %}
+                    <option value="{{ comp.id }}" {% if comp_selecionada and comp.id == comp_selecionada.id %}selected{% endif %}>
+                        {{ comp.nome }} — {{ comp.data.strftime('%d/%m/%Y') }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-danger w-100">
+                    <i class="bi bi-search me-1"></i>Ver chaves
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if comp_selecionada %}
+    {% if chaves_confrontos %}
+    <div class="row g-4">
+        {% for categoria, dados in chaves_confrontos.items() %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-award me-2"></i>{{ categoria }}</span>
+                    <span class="badge bg-light text-dark">{{ dados.total }} atleta(s)</span>
+                </div>
+                <div class="card-body">
+                    {% if dados.total == 1 %}
+                    <div class="alert alert-warning py-2 mb-0 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Apenas 1 atleta nesta categoria. Sem chave disponível.
+                    </div>
+                    {% else %}
+                    <div class="d-flex flex-column gap-2">
+                        {% for insc1, insc2 in dados.pares %}
+                        <div class="confronto-card p-3 rounded border d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary">{{ loop.index }}</span>
+                            <span class="fw-semibold small text-uppercase">{{ insc1.aluno.nome_completo or insc1.aluno.username }}</span>
+                            {% if insc2 %}
+                            <span class="text-muted mx-1">vs</span>
+                            <span class="fw-semibold small text-uppercase">{{ insc2.aluno.nome_completo or insc2.aluno.username }}</span>
+                            {% else %}
+                            <span class="badge bg-success ms-auto">BYE (passa direto)</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-diagram-3 fs-1 d-block mb-3"></i>
+        <h5>Nenhuma chave disponível ainda para este campeonato.</h5>
+    </div>
+    {% endif %}
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-clipboard-data fs-1 d-block mb-3"></i>
+    <h5>Selecione um campeonato para ver as chaves</h5>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('#filtroCompForm select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        sel.form.submit();
+    });
+});
+</script>
+{% endblock %}

@@ -152,6 +152,26 @@ def listagem_inscritos():
     )
 
 
+@app.route("/chaves-publicas")
+def chaves_publicas():
+    competicoes = Competicao.query.filter_by(chaves_publicas=True).order_by(Competicao.data.desc()).all()
+    comp_id = request.args.get("comp", type=int)
+    comp_selecionada = None
+    chaves_confrontos = {}
+    if comp_id:
+        comp_selecionada = Competicao.query.filter_by(id=comp_id, chaves_publicas=True).first()
+        if comp_selecionada:
+            chaves, _, _, _ = montar_chaves(comp_id)
+            chaves_confrontos = {
+                categoria: {"total": len(inscricoes), "pares": gerar_confrontos(inscricoes)}
+                for categoria, inscricoes in chaves.items()
+            }
+    return render_template(
+        "chaves_publicas.html", competicoes=competicoes,
+        comp_selecionada=comp_selecionada, chaves_confrontos=chaves_confrontos,
+    )
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
@@ -970,6 +990,20 @@ def admin_salvar_parametros_campeonato(comp_id):
     return redirect(url_for("admin_chaves", comp_id=comp_id))
 
 
+@app.route("/admin/competicao/<int:comp_id>/chaves-publicas/toggle", methods=["POST"])
+@login_required
+@admin_required
+def admin_toggle_chaves_publicas(comp_id):
+    comp = Competicao.query.get_or_404(comp_id)
+    comp.chaves_publicas = request.form.get("chaves_publicas") == "sim"
+    db.session.commit()
+    flash(
+        "Visualizacao publica das chaves " + ("habilitada." if comp.chaves_publicas else "desabilitada."),
+        "success",
+    )
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+
 @app.route("/admin/competicao/<int:comp_id>/acompanhamento")
 @login_required
 @admin_required
@@ -1247,6 +1281,8 @@ def migrar_banco(engine):
                     inscricao1_id INTEGER REFERENCES inscricoes(id),
                     inscricao2_id INTEGER REFERENCES inscricoes(id)
                 )''', 'Tabela lutas_casadas verificada')
+        executar(conn, 'ALTER TABLE competicoes ADD COLUMN chaves_publicas BOOLEAN DEFAULT FALSE',
+                  'Adicionado: competicoes.chaves_publicas')
 
 
 def init_db():

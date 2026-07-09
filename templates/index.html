@@ -79,6 +79,11 @@
                     <a href="{{ url_for('listagem_inscritos', comp=comp.id) }}" class="btn btn-outline-dark btn-sm w-100">
                         <i class="bi bi-list-check me-1"></i>Listagem de Inscritos
                     </a>
+                    {% if comp.chaves_publicas %}
+                    <a href="{{ url_for('chaves_publicas', comp=comp.id) }}" class="btn btn-outline-dark btn-sm w-100">
+                        <i class="bi bi-diagram-3 me-1"></i>Chaves de Luta
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

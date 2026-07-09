@@ -48,6 +48,31 @@
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white">
+        <span class="fw-bold"><i class="bi bi-eye me-2"></i>Visualização pública</span>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin_toggle_chaves_publicas', comp_id=comp.id) }}" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small fw-semibold">Habilitar chaves de luta para visualização</label>
+                <select name="chaves_publicas" class="form-select" style="width:120px">
+                    <option value="sim" {% if comp.chaves_publicas %}selected{% endif %}>SIM</option>
+                    <option value="nao" {% if not comp.chaves_publicas %}selected{% endif %}>NAO</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-dark">Salvar</button>
+            </div>
+            {% if comp.chaves_publicas %}
+            <div class="col-auto">
+                <span class="badge bg-success align-middle"><i class="bi bi-check-circle me-1"></i>Visível para os atletas</span>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
         <span class="fw-bold"><i class="bi bi-heart-fill me-2 text-danger"></i>Lutas Casadas</span>
     </div>
     <div class="card-body">

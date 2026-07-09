@@ -180,6 +180,7 @@ class Competicao(db.Model):
     ativa = db.Column(db.Boolean, default=True)
     hora_inicio = db.Column(db.Time)
     num_areas = db.Column(db.Integer, default=1)
+    chaves_publicas = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     inscricoes = db.relationship("Inscricao", backref="competicao", lazy=True)
 
