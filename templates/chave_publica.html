@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ categoria }} - Chave - JJ System{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-3 mb-4 no-print">
+    <a href="{{ url_for('chaves_publicas', comp=comp.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+    <div class="ms-md-auto">
+        <button type="button" onclick="window.print()" class="btn btn-danger btn-sm">
+            <i class="bi bi-printer me-1"></i>Imprimir
+        </button>
+    </div>
+</div>
+
+<div class="mb-4">
+    <h2 class="fw-bold mb-0"><i class="bi bi-diagram-3 me-2 text-danger"></i>{{ comp.nome }}</h2>
+    <p class="text-muted mb-0 small">{{ comp.data.strftime('%d/%m/%Y') }}{% if comp.cidade %} &bull; {{ comp.cidade }} - {{ comp.estado }}{% endif %}</p>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-award me-2"></i>{{ categoria }}</span>
+        <span class="badge bg-light text-dark">{{ dados.total }} atleta(s)</span>
+    </div>
+    <div class="card-body">
+        {% if not dados.rodadas %}
+        <div class="alert alert-warning py-2 mb-0 small">
+            <i class="bi bi-exclamation-triangle me-1"></i>Apenas 1 atleta nesta categoria. Sem chave disponível.
+        </div>
+        {% else %}
+        <div class="bracket-wrap">
+            {% for rodada in dados.rodadas %}
+            <div class="bracket-round">
+                <div class="bracket-round-title">{{ dados.rotulos[loop.index0] }}</div>
+                <div class="bracket-round-matches">
+                    {% for match in rodada %}
+                    <div class="bracket-match">
+                        {% if match.placeholder %}
+                        <div class="bracket-box-placeholder">A definir</div>
+                        {% else %}
+                        <div class="bracket-box">
+                            <div class="bracket-box-header">
+                                {% if match.area %}Área {{ match.area }}{% endif %}
+                                {% if match.horario %} — {{ match.horario.strftime('%d/%m %H:%M') }}{% endif %}
+                                {% if not match.area and not match.horario %}A definir{% endif %}
+                            </div>
+                            <div class="bracket-athlete">
+                                <div class="bracket-athlete-nome">{{ match.insc1.aluno.nome_completo or match.insc1.aluno.username }}</div>
+                                <div class="bracket-athlete-academia">{{ match.insc1.aluno.academia or '—' }}</div>
+                            </div>
+                            {% if match.insc2 %}
+                            <div class="bracket-athlete">
+                                <div class="bracket-athlete-nome">{{ match.insc2.aluno.nome_completo or match.insc2.aluno.username }}</div>
+                                <div class="bracket-athlete-academia">{{ match.insc2.aluno.academia or '—' }}</div>
+                            </div>
+                            {% else %}
+                            <div class="bracket-athlete">
+                                <span class="badge bg-success">BYE (passa direto)</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

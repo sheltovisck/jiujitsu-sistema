@@ -217,3 +217,10 @@ body {
     .hero-section h1 { font-size: 1.8rem; }
     .hero-section .lead { font-size: 1rem; }
 }
+
+/* ─── IMPRESSAO ──────────────────────────────────────────────── */
+@media print {
+    .navbar-jj, .footer-jj, .no-print { display: none !important; }
+    .bracket-wrap { overflow-x: visible; flex-wrap: wrap; }
+    .card { box-shadow: none !important; }
+}

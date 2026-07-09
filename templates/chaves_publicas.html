@@ -23,7 +23,7 @@
             </div>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-danger w-100">
-                    <i class="bi bi-search me-1"></i>Ver chaves
+                    <i class="bi bi-search me-1"></i>Ver categorias
                 </button>
             </div>
         </form>
@@ -31,62 +31,48 @@
 </div>
 
 {% if comp_selecionada %}
-    {% if bracket %}
-    <div class="d-flex flex-column gap-4">
-        {% for categoria, dados in bracket.items() %}
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <span class="fw-bold"><i class="bi bi-award me-2"></i>{{ categoria }}</span>
-                <span class="badge bg-light text-dark">{{ dados.total }} atleta(s)</span>
-            </div>
-            <div class="card-body">
-                {% if not dados.rodadas %}
-                <div class="alert alert-warning py-2 mb-0 small">
-                    <i class="bi bi-exclamation-triangle me-1"></i>Apenas 1 atleta nesta categoria. Sem chave disponível.
-                </div>
-                {% else %}
-                <div class="bracket-wrap">
-                    {% for rodada in dados.rodadas %}
-                    <div class="bracket-round">
-                        <div class="bracket-round-title">{{ dados.rotulos[loop.index0] }}</div>
-                        <div class="bracket-round-matches">
-                            {% for match in rodada %}
-                            <div class="bracket-match">
-                                {% if match.placeholder %}
-                                <div class="bracket-box-placeholder">A definir</div>
-                                {% else %}
-                                <div class="bracket-box">
-                                    <div class="bracket-box-header">
-                                        {% if match.area %}Área {{ match.area }}{% endif %}
-                                        {% if match.horario %} — {{ match.horario.strftime('%d/%m %H:%M') }}{% endif %}
-                                        {% if not match.area and not match.horario %}A definir{% endif %}
-                                    </div>
-                                    <div class="bracket-athlete">
-                                        <div class="bracket-athlete-nome">{{ match.insc1.aluno.nome_completo or match.insc1.aluno.username }}</div>
-                                        <div class="bracket-athlete-academia">{{ match.insc1.aluno.academia or '—' }}</div>
-                                    </div>
-                                    {% if match.insc2 %}
-                                    <div class="bracket-athlete">
-                                        <div class="bracket-athlete-nome">{{ match.insc2.aluno.nome_completo or match.insc2.aluno.username }}</div>
-                                        <div class="bracket-athlete-academia">{{ match.insc2.aluno.academia or '—' }}</div>
-                                    </div>
-                                    {% else %}
-                                    <div class="bracket-athlete">
-                                        <span class="badge bg-success">BYE (passa direto)</span>
-                                    </div>
-                                    {% endif %}
+    {% if categorias %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+            <input type="text" id="buscaCategoriaInput" class="form-control" placeholder="🔍 Buscar por faixa, peso ou sexo...">
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle" id="tabelaCategorias">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-3">Data</th>
+                            <th>Faixa</th>
+                            <th>Peso</th>
+                            <th>Sexo</th>
+                            <th>Atletas</th>
+                            <th class="pe-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categorias %}
+                        <tr>
+                            <td class="ps-3 small">{{ cat.data.strftime('%d/%m/%Y') }}</td>
+                            <td class="small fw-semibold">{{ cat.faixa }}</td>
+                            <td class="small">{{ cat.peso }}</td>
+                            <td class="small">{{ cat.sexo }}</td>
+                            <td><span class="badge bg-secondary">{{ cat.total }}</span></td>
+                            <td class="pe-3">
+                                <div class="d-flex gap-2">
+                                    <a href="{{ url_for('chave_publica', comp=comp_selecionada.id, categoria=cat.chave) }}" class="btn btn-dark btn-sm">
+                                        <i class="bi bi-diagram-3 me-1"></i>Ver Chave
+                                    </a>
+                                    <a href="{{ url_for('listagem_inscritos', comp=comp_selecionada.id, faixa=cat.faixa, categoria=cat.peso, sexo=cat.sexo_code) }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-people me-1"></i>Atletas
+                                    </a>
                                 </div>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-        {% endfor %}
     </div>
     {% else %}
     <div class="text-center py-5 text-muted">
@@ -97,7 +83,7 @@
 {% else %}
 <div class="text-center py-5 text-muted">
     <i class="bi bi-clipboard-data fs-1 d-block mb-3"></i>
-    <h5>Selecione um campeonato para ver as chaves</h5>
+    <h5>Selecione um campeonato para ver as categorias</h5>
 </div>
 {% endif %}
 {% endblock %}
@@ -109,5 +95,14 @@ document.querySelectorAll('#filtroCompForm select').forEach(function(sel) {
         sel.form.submit();
     });
 });
+const buscaCategoriaInput = document.getElementById('buscaCategoriaInput');
+if (buscaCategoriaInput) {
+    buscaCategoriaInput.addEventListener('input', function() {
+        const termo = this.value.toLowerCase();
+        document.querySelectorAll('#tabelaCategorias tbody tr').forEach(function(row) {
+            row.style.display = row.textContent.toLowerCase().includes(termo) ? '' : 'none';
+        });
+    });
+}
 </script>
 {% endblock %}

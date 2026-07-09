@@ -158,14 +158,30 @@ def chaves_publicas():
     competicoes = Competicao.query.filter_by(chaves_publicas=True).order_by(Competicao.data.desc()).all()
     comp_id = request.args.get("comp", type=int)
     comp_selecionada = None
-    bracket = {}
+    categorias = []
     if comp_id:
         comp_selecionada = Competicao.query.filter_by(id=comp_id, chaves_publicas=True).first()
         if comp_selecionada:
-            bracket = montar_bracket(comp_id)
+            categorias = listar_categorias_publicas(comp_id)
     return render_template(
         "chaves_publicas.html", competicoes=competicoes,
-        comp_selecionada=comp_selecionada, bracket=bracket,
+        comp_selecionada=comp_selecionada, categorias=categorias,
+    )
+
+
+@app.route("/chaves-publicas/chave")
+def chave_publica():
+    comp_id = request.args.get("comp", type=int)
+    categoria = request.args.get("categoria", "")
+    comp_selecionada = Competicao.query.filter_by(id=comp_id, chaves_publicas=True).first() if comp_id else None
+    if not comp_selecionada or not categoria:
+        abort(404)
+    bracket = montar_bracket(comp_id)
+    dados = bracket.get(categoria)
+    if not dados:
+        abort(404)
+    return render_template(
+        "chave_publica.html", comp=comp_selecionada, categoria=categoria, dados=dados,
     )
 
 
@@ -1099,6 +1115,31 @@ def montar_bracket(comp_id):
         bracket[categoria] = {"total": total, "rodadas": rodadas, "rotulos": _rotulos_rodadas(len(rodadas))}
 
     return bracket
+
+
+def listar_categorias_publicas(comp_id):
+    """Lista resumida das categorias (chaves) de uma competicao, para a
+    tela publica escolher qual chave visualizar."""
+    chaves, _, _, _ = montar_chaves(comp_id)
+    comp = Competicao.query.get_or_404(comp_id)
+    categorias = []
+    for chave, inscricoes in chaves.items():
+        partes = chave.split(" | ")
+        if len(partes) == 3:
+            faixa, sexo_str, peso = partes
+        else:
+            faixa, sexo_str, peso = "—", "—", chave
+        sexo_code = "M" if sexo_str == "Masculino" else "F" if sexo_str == "Feminino" else ""
+        categorias.append({
+            "chave": chave, "faixa": faixa, "sexo": sexo_str, "sexo_code": sexo_code,
+            "peso": peso, "total": len(inscricoes), "data": comp.data,
+        })
+    categorias.sort(key=lambda c: (
+        0 if c["sexo"] == "Masculino" else 1 if c["sexo"] == "Feminino" else 2,
+        ORDEM_FAIXAS_MESCLAGEM.index(c["faixa"]) if c["faixa"] in ORDEM_FAIXAS_MESCLAGEM else len(ORDEM_FAIXAS_MESCLAGEM),
+        c["faixa"], c["peso"],
+    ))
+    return categorias
 
 
 @app.route("/admin/competicao/<int:comp_id>/acompanhamento")
