@@ -1253,6 +1253,28 @@ def admin_gerar_chave(comp_id):
     return redirect(url_for("admin_chaves", comp_id=comp_id))
 
 
+@app.route("/admin/competicao/<int:comp_id>/chaves/gerar-todas", methods=["POST"])
+@login_required
+@admin_required
+def admin_gerar_todas_chaves(comp_id):
+    chaves, _, _, _ = montar_chaves(comp_id)
+    ja_geradas = {
+        row[0] for row in db.session.query(LutaChave.chave)
+        .filter_by(competicao_id=comp_id).distinct().all()
+    }
+    geradas_agora = 0
+    for categoria, inscricoes in chaves.items():
+        if categoria in ja_geradas or len(inscricoes) < 2:
+            continue
+        gerar_lutas_chave(comp_id, categoria, inscricoes)
+        geradas_agora += 1
+    if geradas_agora:
+        flash(f"{geradas_agora} chave(s) gerada(s) com sucesso!", "success")
+    else:
+        flash("Todas as chaves elegíveis já estavam geradas.", "info")
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+
 @app.route("/admin/luta-chave/<int:luta_id>/vencedor", methods=["POST"])
 @login_required
 @admin_required

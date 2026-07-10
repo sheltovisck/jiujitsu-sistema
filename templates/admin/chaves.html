@@ -11,6 +11,13 @@
         <p class="text-muted mb-0 small">{{ comp.data.strftime('%d/%m/%Y') }}{% if comp.cidade %} &bull; {{ comp.cidade }} - {{ comp.estado }}{% endif %}</p>
     </div>
     <div class="ms-md-auto d-flex flex-wrap gap-2">
+        {% if chaves %}
+        <form method="POST" action="{{ url_for('admin_gerar_todas_chaves', comp_id=comp.id) }}">
+            <button type="submit" class="btn btn-danger btn-sm">
+                <i class="bi bi-diagram-3 me-1"></i>Gerar Todas as Chaves
+            </button>
+        </form>
+        {% endif %}
         <a href="{{ url_for('admin_acompanhamento', comp_id=comp.id) }}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-clock-history me-1"></i>Acompanhamento
         </a>
