@@ -285,3 +285,40 @@ class LutaChave(db.Model):
 
     def __repr__(self):
         return "<LutaChave " + self.chave + " R" + str(self.rodada) + ">"
+
+
+class Absoluto(db.Model):
+    """Categoria de absoluto (peso livre) criada manualmente dentro de uma
+    competicao, reunindo atletas de uma ou mais faixas escolhidas pelo
+    admin (ex: Absoluto Azul, Absoluto Azul/Roxa, Absoluto Misto)."""
+    __tablename__ = "absolutos"
+    id = db.Column(db.Integer, primary_key=True)
+    competicao_id = db.Column(db.Integer, db.ForeignKey("competicoes.id"), nullable=False)
+    nome = db.Column(db.String(150), nullable=False)
+    sexo = db.Column(db.String(10))
+    faixas = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def chave_nome(self):
+        return "Absoluto | " + self.nome
+
+    def lista_faixas(self):
+        return self.faixas.split(",") if self.faixas else []
+
+    def __repr__(self):
+        return "<Absoluto " + self.nome + ">"
+
+
+class AbsolutoInscrito(db.Model):
+    """Atleta escalado manualmente para um Absoluto, com ordem propria
+    (usada para gerar a chave e permitir reordenar por arrastar)."""
+    __tablename__ = "absoluto_inscritos"
+    id = db.Column(db.Integer, primary_key=True)
+    absoluto_id = db.Column(db.Integer, db.ForeignKey("absolutos.id"), nullable=False)
+    inscricao_id = db.Column(db.Integer, db.ForeignKey("inscricoes.id"), nullable=False)
+    ordem_chave = db.Column(db.Integer, default=0)
+
+    inscricao = db.relationship("Inscricao")
+
+    def __repr__(self):
+        return "<AbsolutoInscrito " + str(self.id) + ">"

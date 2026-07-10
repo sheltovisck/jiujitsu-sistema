@@ -4,7 +4,8 @@ from flask_mail import Mail, Message
 from datetime import datetime, date, timedelta
 from models import (
     db, User, Competicao, Inscricao, Academia, Professor, HistoricoFaixa, Configuracao,
-    GrupoPeso, TempoCategoria, LutaCasada, LutaChave, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
+    GrupoPeso, TempoCategoria, LutaCasada, LutaChave, Absoluto, AbsolutoInscrito,
+    calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
 )
 import os
 import secrets
@@ -1275,6 +1276,12 @@ def admin_gerar_todas_chaves(comp_id):
     return redirect(url_for("admin_chaves", comp_id=comp_id))
 
 
+def _redirect_apos_resultado(luta):
+    if luta.chave.startswith("Absoluto | "):
+        return redirect(url_for("admin_absolutos", comp_id=luta.competicao_id))
+    return redirect(url_for("admin_chaves", comp_id=luta.competicao_id))
+
+
 @app.route("/admin/luta-chave/<int:luta_id>/vencedor", methods=["POST"])
 @login_required
 @admin_required
@@ -1283,7 +1290,7 @@ def admin_declarar_vencedor(luta_id):
     vencedor_id = request.form.get("vencedor_id", type=int)
     if luta.bye or vencedor_id not in (luta.inscricao1_id, luta.inscricao2_id):
         flash("Vencedor invalido.", "danger")
-        return redirect(url_for("admin_chaves", comp_id=luta.competicao_id))
+        return _redirect_apos_resultado(luta)
     luta.vencedor_id = vencedor_id
     db.session.flush()
     filha = LutaChave.query.filter(
@@ -1296,7 +1303,7 @@ def admin_declarar_vencedor(luta_id):
             filha.inscricao2_id = vencedor_id
     db.session.commit()
     flash("Resultado registrado!", "success")
-    return redirect(url_for("admin_chaves", comp_id=luta.competicao_id))
+    return _redirect_apos_resultado(luta)
 
 
 @app.route("/admin/luta-chave/<int:luta_id>/desfazer", methods=["POST"])
@@ -1304,11 +1311,139 @@ def admin_declarar_vencedor(luta_id):
 @admin_required
 def admin_desfazer_resultado_luta(luta_id):
     luta = LutaChave.query.get_or_404(luta_id)
-    comp_id = luta.competicao_id
     _desfazer_resultado_cascata(luta)
     db.session.commit()
     flash("Resultado desfeito.", "success")
-    return redirect(url_for("admin_chaves", comp_id=comp_id))
+    return _redirect_apos_resultado(luta)
+
+
+def listar_inscricoes_absoluto(absoluto_id):
+    itens = AbsolutoInscrito.query.filter_by(absoluto_id=absoluto_id).order_by(
+        AbsolutoInscrito.ordem_chave, AbsolutoInscrito.id
+    ).all()
+    return [item.inscricao for item in itens]
+
+
+@app.route("/admin/competicao/<int:comp_id>/absolutos")
+@login_required
+@admin_required
+def admin_absolutos(comp_id):
+    comp = Competicao.query.get_or_404(comp_id)
+    absolutos = Absoluto.query.filter_by(competicao_id=comp_id).order_by(Absoluto.created_at).all()
+    todos_inscritos = Inscricao.query.filter_by(
+        competicao_id=comp_id, status="aprovado"
+    ).join(User).order_by(User.nome_completo).all()
+
+    dados_absolutos = []
+    for absoluto in absolutos:
+        selecionados = listar_inscricoes_absoluto(absoluto.id)
+        ids_selecionados = {i.id for i in selecionados}
+        faixas_incluidas = absoluto.lista_faixas()
+        elegiveis = [
+            i for i in todos_inscritos
+            if (not absoluto.sexo or i.aluno.sexo == absoluto.sexo)
+            and (not faixas_incluidas or faixa_base(i.faixa_inscricao) in faixas_incluidas)
+        ]
+        lutas = LutaChave.query.filter_by(competicao_id=comp_id, chave=absoluto.chave_nome()).all()
+        rodadas, rotulos, podio = [], [], None
+        if lutas:
+            rodadas, rotulos = organizar_lutas_por_rodada(lutas)
+            podio = calcular_podio(lutas)
+        dados_absolutos.append({
+            "absoluto": absoluto, "selecionados": selecionados, "ids_selecionados": ids_selecionados,
+            "elegiveis": elegiveis, "gerada": bool(lutas),
+            "rodadas": rodadas, "rotulos": rotulos, "podio": podio,
+            "confrontos_preview": gerar_confrontos(selecionados) if len(selecionados) >= 2 else [],
+        })
+
+    return render_template(
+        "admin/absolutos.html", comp=comp, dados_absolutos=dados_absolutos,
+        faixas_disponiveis=["Branca", "Cinza", "Amarela", "Laranja", "Verde", "Azul", "Roxa", "Marrom", "Preta"],
+    )
+
+
+@app.route("/admin/competicao/<int:comp_id>/absolutos/criar", methods=["POST"])
+@login_required
+@admin_required
+def admin_criar_absoluto(comp_id):
+    Competicao.query.get_or_404(comp_id)
+    nome = request.form.get("nome", "").strip()
+    sexo = request.form.get("sexo", "")
+    faixas = request.form.getlist("faixas")
+    if not nome:
+        flash("Informe um nome para o absoluto.", "danger")
+        return redirect(url_for("admin_absolutos", comp_id=comp_id))
+    absoluto = Absoluto(
+        competicao_id=comp_id, nome=nome, sexo=sexo if sexo in ("M", "F") else "",
+        faixas=",".join(faixas),
+    )
+    db.session.add(absoluto)
+    db.session.commit()
+    flash(f"Absoluto '{nome}' criado! Selecione os atletas abaixo.", "success")
+    return redirect(url_for("admin_absolutos", comp_id=comp_id))
+
+
+@app.route("/admin/absoluto/<int:absoluto_id>/excluir", methods=["POST"])
+@login_required
+@admin_required
+def admin_excluir_absoluto(absoluto_id):
+    absoluto = Absoluto.query.get_or_404(absoluto_id)
+    comp_id = absoluto.competicao_id
+    LutaChave.query.filter_by(competicao_id=comp_id, chave=absoluto.chave_nome()).delete()
+    AbsolutoInscrito.query.filter_by(absoluto_id=absoluto.id).delete()
+    db.session.delete(absoluto)
+    db.session.commit()
+    flash("Absoluto excluído.", "success")
+    return redirect(url_for("admin_absolutos", comp_id=comp_id))
+
+
+@app.route("/admin/absoluto/<int:absoluto_id>/atletas", methods=["POST"])
+@login_required
+@admin_required
+def admin_absoluto_atletas(absoluto_id):
+    absoluto = Absoluto.query.get_or_404(absoluto_id)
+    ids_selecionados = {int(v) for v in request.form.getlist("inscricao_id")}
+    atuais = AbsolutoInscrito.query.filter_by(absoluto_id=absoluto.id).all()
+    ids_atuais = {ai.inscricao_id for ai in atuais}
+    for ai in atuais:
+        if ai.inscricao_id not in ids_selecionados:
+            db.session.delete(ai)
+    proxima_ordem = max([ai.ordem_chave for ai in atuais], default=-1) + 1
+    for insc_id in ids_selecionados - ids_atuais:
+        db.session.add(AbsolutoInscrito(absoluto_id=absoluto.id, inscricao_id=insc_id, ordem_chave=proxima_ordem))
+        proxima_ordem += 1
+    db.session.commit()
+    flash("Atletas do absoluto atualizados.", "success")
+    return redirect(url_for("admin_absolutos", comp_id=absoluto.competicao_id))
+
+
+@app.route("/admin/absoluto/<int:absoluto_id>/reordenar", methods=["POST"])
+@login_required
+@admin_required
+def admin_reordenar_absoluto(absoluto_id):
+    absoluto = Absoluto.query.get_or_404(absoluto_id)
+    dados = request.get_json(silent=True) or {}
+    ids_ordenados = dados.get("ordem", [])
+    for posicao, insc_id in enumerate(ids_ordenados):
+        item = AbsolutoInscrito.query.filter_by(absoluto_id=absoluto.id, inscricao_id=insc_id).first()
+        if item:
+            item.ordem_chave = posicao
+    db.session.commit()
+    return jsonify({"status": "ok"})
+
+
+@app.route("/admin/absoluto/<int:absoluto_id>/gerar-chave", methods=["POST"])
+@login_required
+@admin_required
+def admin_gerar_chave_absoluto(absoluto_id):
+    absoluto = Absoluto.query.get_or_404(absoluto_id)
+    inscricoes = listar_inscricoes_absoluto(absoluto.id)
+    if len(inscricoes) < 2:
+        flash("Selecione ao menos 2 atletas para gerar a chave.", "danger")
+        return redirect(url_for("admin_absolutos", comp_id=absoluto.competicao_id))
+    gerar_lutas_chave(absoluto.competicao_id, absoluto.chave_nome(), inscricoes)
+    flash(f"Chave gerada: {absoluto.nome}", "success")
+    return redirect(url_for("admin_absolutos", comp_id=absoluto.competicao_id))
 
 
 def listar_categorias_publicas(comp_id):
@@ -1608,6 +1743,20 @@ def migrar_banco(engine):
                     origem1_luta_id INTEGER REFERENCES lutas_chave(id),
                     origem2_luta_id INTEGER REFERENCES lutas_chave(id)
                 )''', 'Tabela lutas_chave verificada')
+        executar(conn, f'''CREATE TABLE IF NOT EXISTS absolutos (
+                    id {autoincrement},
+                    competicao_id INTEGER NOT NULL REFERENCES competicoes(id),
+                    nome VARCHAR(150) NOT NULL,
+                    sexo VARCHAR(10),
+                    faixas VARCHAR(200),
+                    created_at {tipo_datahora}
+                )''', 'Tabela absolutos verificada')
+        executar(conn, f'''CREATE TABLE IF NOT EXISTS absoluto_inscritos (
+                    id {autoincrement},
+                    absoluto_id INTEGER NOT NULL REFERENCES absolutos(id),
+                    inscricao_id INTEGER NOT NULL REFERENCES inscricoes(id),
+                    ordem_chave INTEGER DEFAULT 0
+                )''', 'Tabela absoluto_inscritos verificada')
 
 
 @app.errorhandler(404)
