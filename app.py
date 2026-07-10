@@ -11,6 +11,7 @@ import os
 import secrets
 import string
 import math
+import random
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "jiujitsu-key-2024"
@@ -1443,6 +1444,20 @@ def admin_gerar_chave_absoluto(absoluto_id):
         return redirect(url_for("admin_absolutos", comp_id=absoluto.competicao_id))
     gerar_lutas_chave(absoluto.competicao_id, absoluto.chave_nome(), inscricoes)
     flash(f"Chave gerada: {absoluto.nome}", "success")
+    return redirect(url_for("admin_absolutos", comp_id=absoluto.competicao_id))
+
+
+@app.route("/admin/absoluto/<int:absoluto_id>/sortear", methods=["POST"])
+@login_required
+@admin_required
+def admin_sortear_absoluto(absoluto_id):
+    absoluto = Absoluto.query.get_or_404(absoluto_id)
+    itens = AbsolutoInscrito.query.filter_by(absoluto_id=absoluto.id).all()
+    random.shuffle(itens)
+    for posicao, item in enumerate(itens):
+        item.ordem_chave = posicao
+    db.session.commit()
+    flash("Ordem sorteada! Confira e ajuste arrastando, se quiser, antes de gerar a chave.", "success")
     return redirect(url_for("admin_absolutos", comp_id=absoluto.competicao_id))
 
 
