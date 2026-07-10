@@ -46,6 +46,7 @@
                             <th>Peso</th>
                             <th>Sexo</th>
                             <th>Atletas</th>
+                            <th>Status</th>
                             <th class="pe-3">Ações</th>
                         </tr>
                     </thead>
@@ -57,11 +58,24 @@
                             <td class="small">{{ cat.peso }}</td>
                             <td class="small">{{ cat.sexo }}</td>
                             <td><span class="badge bg-secondary">{{ cat.total }}</span></td>
+                            <td>
+                                {% if cat.gerada %}
+                                <span class="badge bg-success">Gerada</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark border">Aguardando</span>
+                                {% endif %}
+                            </td>
                             <td class="pe-3">
                                 <div class="d-flex gap-2">
+                                    {% if cat.gerada %}
                                     <a href="{{ url_for('chave_publica', comp=comp_selecionada.id, categoria=cat.chave) }}" class="btn btn-dark btn-sm">
                                         <i class="bi bi-diagram-3 me-1"></i>Ver Chave
                                     </a>
+                                    {% else %}
+                                    <button type="button" class="btn btn-dark btn-sm" disabled title="Chave ainda não gerada pela organização">
+                                        <i class="bi bi-diagram-3 me-1"></i>Ver Chave
+                                    </button>
+                                    {% endif %}
                                     <a href="{{ url_for('listagem_inscritos', comp=comp_selecionada.id, faixa=cat.faixa, categoria=cat.peso, sexo=cat.sexo_code) }}" class="btn btn-outline-secondary btn-sm">
                                         <i class="bi bi-people me-1"></i>Atletas
                                     </a>

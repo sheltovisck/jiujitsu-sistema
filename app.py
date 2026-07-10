@@ -4,7 +4,7 @@ from flask_mail import Mail, Message
 from datetime import datetime, date, timedelta
 from models import (
     db, User, Competicao, Inscricao, Academia, Professor, HistoricoFaixa, Configuracao,
-    GrupoPeso, TempoCategoria, LutaCasada, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
+    GrupoPeso, TempoCategoria, LutaCasada, LutaChave, calcular_categoria_peso, ORDEM_CATEGORIAS_PESO,
 )
 import os
 import secrets
@@ -176,12 +176,14 @@ def chave_publica():
     comp_selecionada = Competicao.query.filter_by(id=comp_id, chaves_publicas=True).first() if comp_id else None
     if not comp_selecionada or not categoria:
         abort(404)
-    bracket = montar_bracket(comp_id)
-    dados = bracket.get(categoria)
-    if not dados:
+    lutas = LutaChave.query.filter_by(competicao_id=comp_id, chave=categoria).all()
+    if not lutas:
         abort(404)
+    rodadas, rotulos = organizar_lutas_por_rodada(lutas)
+    podio = calcular_podio(lutas)
     return render_template(
-        "chave_publica.html", comp=comp_selecionada, categoria=categoria, dados=dados,
+        "chave_publica.html", comp=comp_selecionada, categoria=categoria,
+        rodadas=rodadas, rotulos=rotulos, podio=podio,
     )
 
 
@@ -896,14 +898,47 @@ def montar_chaves(comp_id):
     return chaves, grupos, categorias_ordenadas, lutas_casadas
 
 
+def _proxima_potencia_de_2(n):
+    p = 1
+    while p < n:
+        p *= 2
+    return p
+
+
+def _distribuir_slots_bracket(atletas):
+    """Distribui os atletas em uma chave eliminatoria simples cujo tamanho e
+    a proxima potencia de 2, com os byes espalhados de forma equilibrada
+    entre as duas metades da chave (recursivamente) - padrao de chaveamento
+    oficial (ex: IBJJF), em vez de concentrar todos os byes no final."""
+    tamanho = _proxima_potencia_de_2(len(atletas))
+
+    def montar(lista, tam):
+        if tam == 1:
+            return [lista[0]] if lista else [None]
+        metade = tam // 2
+        n_esquerda = (len(lista) + 1) // 2
+        return montar(lista[:n_esquerda], metade) + montar(lista[n_esquerda:], metade)
+
+    return montar(atletas, tamanho)
+
+
 def gerar_confrontos(inscricoes):
-    """Retorna lista de pares (insc1, insc2). insc2 e None quando ha BYE."""
-    pares = []
+    """Retorna a 1a rodada da chave eliminatoria simples. insc2 e None
+    quando ha BYE. Com 5 a 8 atletas a chave comeca nas quartas de final,
+    com os byes distribuidos entre os dois lados da chave, nao apenas no
+    final da lista (padrao IBJJF)."""
     n = len(inscricoes)
-    for i in range(0, n - 1, 2):
-        pares.append((inscricoes[i], inscricoes[i + 1]))
-    if n % 2 != 0:
-        pares.append((inscricoes[-1], None))
+    if n == 0:
+        return []
+    if n == 1:
+        return [(inscricoes[0], None)]
+    slots = _distribuir_slots_bracket(inscricoes)
+    pares = []
+    for i in range(0, len(slots), 2):
+        a, b = slots[i], slots[i + 1]
+        if a is None:
+            a, b = b, a
+        pares.append((a, b))
     return pares
 
 
@@ -917,11 +952,28 @@ def admin_chaves(comp_id):
     inscritos_disponiveis = Inscricao.query.filter_by(
         competicao_id=comp_id, status="aprovado"
     ).join(User).order_by(User.nome_completo).all()
+    confrontos_por_categoria = {
+        categoria: gerar_confrontos(inscricoes) for categoria, inscricoes in chaves.items()
+    }
+
+    rodadas_por_categoria = {}
+    rotulos_por_categoria = {}
+    podios_por_categoria = {}
+    for categoria in chaves.keys():
+        lutas = LutaChave.query.filter_by(competicao_id=comp_id, chave=categoria).all()
+        if lutas:
+            rodadas, rotulos = organizar_lutas_por_rodada(lutas)
+            rodadas_por_categoria[categoria] = rodadas
+            rotulos_por_categoria[categoria] = rotulos
+            podios_por_categoria[categoria] = calcular_podio(lutas)
 
     return render_template(
         "admin/chaves.html", comp=comp, chaves=chaves,
         categorias_ordenadas=categorias_ordenadas, grupos=grupos, tempos=tempos,
         lutas_casadas=lutas_casadas, inscritos_disponiveis=inscritos_disponiveis,
+        confrontos_por_categoria=confrontos_por_categoria,
+        rodadas_por_categoria=rodadas_por_categoria, rotulos_por_categoria=rotulos_por_categoria,
+        podios_por_categoria=podios_por_categoria,
     )
 
 
@@ -1081,40 +1133,160 @@ def _rotulos_rodadas(qtd_rodadas):
     return rotulos
 
 
-def montar_bracket(comp_id):
-    """Monta o chaveamento em arvore por categoria, com area/horario da 1a
-    rodada (reaproveitando o cronograma). As rodadas seguintes ainda nao tem
-    confronto definido, pois o sistema nao registra o resultado das lutas."""
-    chaves, areas_info = calcular_cronograma(comp_id)
-    horarios = {}
-    for area in areas_info:
-        for luta in area["lutas"]:
-            horarios[(luta["chave"], luta["atleta1"].id, luta["atleta2"].id)] = {
-                "area": luta["area"], "horario": luta["horario"],
-            }
+def gerar_lutas_chave(comp_id, categoria, inscricoes):
+    """(Re)gera do zero as lutas persistidas de uma chave, com numeracao
+    sequencial e byes automaticos, a partir da ordem atual dos inscritos.
+    Apaga qualquer resultado ja registrado antes para essa categoria."""
+    LutaChave.query.filter_by(competicao_id=comp_id, chave=categoria).delete()
+    db.session.flush()
 
-    bracket = {}
-    for categoria, inscricoes in chaves.items():
-        total = len(inscricoes)
-        if total < 2:
-            bracket[categoria] = {"total": total, "rodadas": None, "rotulos": []}
-            continue
-        rodada1 = []
-        for insc1, insc2 in gerar_confrontos(inscricoes):
-            info = horarios.get((categoria, insc1.id, insc2.id)) if insc2 else None
-            rodada1.append({
-                "insc1": insc1, "insc2": insc2,
-                "area": info["area"] if info else None,
-                "horario": info["horario"] if info else None,
-            })
-        rodadas = [rodada1]
-        n_slots = len(rodada1)
-        while n_slots > 1:
-            n_slots = math.ceil(n_slots / 2)
-            rodadas.append([{"placeholder": True} for _ in range(n_slots)])
-        bracket[categoria] = {"total": total, "rodadas": rodadas, "rotulos": _rotulos_rodadas(len(rodadas))}
+    contador = {"n": 1}
 
-    return bracket
+    def proximo_numero():
+        n = contador["n"]
+        contador["n"] += 1
+        return n
+
+    rodada_atual = []
+    for pos, (a, b) in enumerate(gerar_confrontos(inscricoes)):
+        eh_bye = b is None
+        luta = LutaChave(
+            competicao_id=comp_id, chave=categoria, rodada=1, posicao=pos, bye=eh_bye,
+            inscricao1_id=a.id if a else None,
+            inscricao2_id=b.id if b else None,
+        )
+        if eh_bye and a:
+            luta.vencedor_id = a.id
+        else:
+            luta.numero_luta = proximo_numero()
+        db.session.add(luta)
+        rodada_atual.append(luta)
+    db.session.flush()
+
+    rodada_num = 2
+    while len(rodada_atual) > 1:
+        proxima = []
+        for i in range(0, len(rodada_atual), 2):
+            l1, l2 = rodada_atual[i], rodada_atual[i + 1]
+            nova = LutaChave(
+                competicao_id=comp_id, chave=categoria, rodada=rodada_num, posicao=i // 2,
+                inscricao1_id=l1.vencedor_id, inscricao2_id=l2.vencedor_id,
+                origem1_luta_id=None if l1.vencedor_id else l1.id,
+                origem2_luta_id=None if l2.vencedor_id else l2.id,
+                numero_luta=proximo_numero(),
+            )
+            db.session.add(nova)
+            proxima.append(nova)
+        db.session.flush()
+        rodada_atual = proxima
+        rodada_num += 1
+
+    db.session.commit()
+
+
+def organizar_lutas_por_rodada(lutas):
+    """Agrupa as lutas persistidas de uma categoria em rodadas ordenadas,
+    prontas para exibicao em arvore. Retorna (rodadas, rotulos)."""
+    if not lutas:
+        return [], []
+    total_rodadas = max(l.rodada for l in lutas)
+    rodadas = []
+    for r in range(1, total_rodadas + 1):
+        rodadas.append(sorted([l for l in lutas if l.rodada == r], key=lambda l: l.posicao))
+    return rodadas, _rotulos_rodadas(total_rodadas)
+
+
+def calcular_podio(lutas):
+    """Campeao, vice e terceiros colocados (semifinalistas derrotados),
+    quando ja definidos pelos resultados registrados."""
+    if not lutas:
+        return None
+    total_rodadas = max(l.rodada for l in lutas)
+    final = next((l for l in lutas if l.rodada == total_rodadas), None)
+    if not final or not final.vencedor_id:
+        return None
+    vice_id = final.inscricao2_id if final.vencedor_id == final.inscricao1_id else final.inscricao1_id
+    terceiros = []
+    if total_rodadas >= 2:
+        for sf in [l for l in lutas if l.rodada == total_rodadas - 1]:
+            if sf.vencedor_id:
+                perdedor_id = sf.inscricao2_id if sf.vencedor_id == sf.inscricao1_id else sf.inscricao1_id
+                if perdedor_id:
+                    terceiros.append(perdedor_id)
+    return {
+        "campeao": final.vencedor,
+        "vice": Inscricao.query.get(vice_id) if vice_id else None,
+        "terceiros": [Inscricao.query.get(i) for i in terceiros],
+    }
+
+
+def _desfazer_resultado_cascata(luta):
+    """Limpa o resultado de uma luta e desfaz em cascata o avanco que ele
+    ja tenha gerado nas lutas seguintes."""
+    if not luta.vencedor_id:
+        return
+    vencedor_id = luta.vencedor_id
+    luta.vencedor_id = None
+    filha = LutaChave.query.filter(
+        db.or_(LutaChave.origem1_luta_id == luta.id, LutaChave.origem2_luta_id == luta.id)
+    ).first()
+    if filha:
+        if filha.origem1_luta_id == luta.id and filha.inscricao1_id == vencedor_id:
+            filha.inscricao1_id = None
+        elif filha.origem2_luta_id == luta.id and filha.inscricao2_id == vencedor_id:
+            filha.inscricao2_id = None
+        _desfazer_resultado_cascata(filha)
+
+
+@app.route("/admin/competicao/<int:comp_id>/chave/gerar", methods=["POST"])
+@login_required
+@admin_required
+def admin_gerar_chave(comp_id):
+    categoria = request.form.get("categoria", "")
+    chaves, _, _, _ = montar_chaves(comp_id)
+    inscricoes = chaves.get(categoria)
+    if not inscricoes:
+        flash("Categoria nao encontrada.", "danger")
+        return redirect(url_for("admin_chaves", comp_id=comp_id))
+    gerar_lutas_chave(comp_id, categoria, inscricoes)
+    flash(f"Chave gerada: {categoria}", "success")
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
+
+
+@app.route("/admin/luta-chave/<int:luta_id>/vencedor", methods=["POST"])
+@login_required
+@admin_required
+def admin_declarar_vencedor(luta_id):
+    luta = LutaChave.query.get_or_404(luta_id)
+    vencedor_id = request.form.get("vencedor_id", type=int)
+    if luta.bye or vencedor_id not in (luta.inscricao1_id, luta.inscricao2_id):
+        flash("Vencedor invalido.", "danger")
+        return redirect(url_for("admin_chaves", comp_id=luta.competicao_id))
+    luta.vencedor_id = vencedor_id
+    db.session.flush()
+    filha = LutaChave.query.filter(
+        db.or_(LutaChave.origem1_luta_id == luta.id, LutaChave.origem2_luta_id == luta.id)
+    ).first()
+    if filha:
+        if filha.origem1_luta_id == luta.id:
+            filha.inscricao1_id = vencedor_id
+        else:
+            filha.inscricao2_id = vencedor_id
+    db.session.commit()
+    flash("Resultado registrado!", "success")
+    return redirect(url_for("admin_chaves", comp_id=luta.competicao_id))
+
+
+@app.route("/admin/luta-chave/<int:luta_id>/desfazer", methods=["POST"])
+@login_required
+@admin_required
+def admin_desfazer_resultado_luta(luta_id):
+    luta = LutaChave.query.get_or_404(luta_id)
+    comp_id = luta.competicao_id
+    _desfazer_resultado_cascata(luta)
+    db.session.commit()
+    flash("Resultado desfeito.", "success")
+    return redirect(url_for("admin_chaves", comp_id=comp_id))
 
 
 def listar_categorias_publicas(comp_id):
@@ -1122,6 +1294,10 @@ def listar_categorias_publicas(comp_id):
     tela publica escolher qual chave visualizar."""
     chaves, _, _, _ = montar_chaves(comp_id)
     comp = Competicao.query.get_or_404(comp_id)
+    chaves_geradas = {
+        row[0] for row in db.session.query(LutaChave.chave)
+        .filter_by(competicao_id=comp_id).distinct().all()
+    }
     categorias = []
     for chave, inscricoes in chaves.items():
         partes = chave.split(" | ")
@@ -1133,6 +1309,7 @@ def listar_categorias_publicas(comp_id):
         categorias.append({
             "chave": chave, "faixa": faixa, "sexo": sexo_str, "sexo_code": sexo_code,
             "peso": peso, "total": len(inscricoes), "data": comp.data,
+            "gerada": chave in chaves_geradas,
         })
     categorias.sort(key=lambda c: (
         0 if c["sexo"] == "Masculino" else 1 if c["sexo"] == "Feminino" else 2,
@@ -1395,6 +1572,53 @@ def migrar_banco(engine):
                   'Adicionado: competicoes.chaves_publicas')
         executar(conn, 'ALTER TABLE inscricoes ADD COLUMN ordem_chave INTEGER DEFAULT 0',
                   'Adicionado: inscricoes.ordem_chave')
+        executar(conn, f'''CREATE TABLE IF NOT EXISTS lutas_chave (
+                    id {autoincrement},
+                    competicao_id INTEGER NOT NULL REFERENCES competicoes(id),
+                    chave VARCHAR(150) NOT NULL,
+                    rodada INTEGER NOT NULL,
+                    posicao INTEGER NOT NULL,
+                    numero_luta INTEGER,
+                    bye BOOLEAN DEFAULT FALSE,
+                    inscricao1_id INTEGER REFERENCES inscricoes(id),
+                    inscricao2_id INTEGER REFERENCES inscricoes(id),
+                    vencedor_id INTEGER REFERENCES inscricoes(id),
+                    origem1_luta_id INTEGER REFERENCES lutas_chave(id),
+                    origem2_luta_id INTEGER REFERENCES lutas_chave(id)
+                )''', 'Tabela lutas_chave verificada')
+
+
+@app.errorhandler(404)
+def erro_404(e):
+    return render_template(
+        "erro.html", codigo=404, titulo="Página não encontrada",
+        mensagem="A página que você está procurando não existe ou foi removida.",
+    ), 404
+
+
+@app.errorhandler(403)
+def erro_403(e):
+    return render_template(
+        "erro.html", codigo=403, titulo="Acesso negado",
+        mensagem="Você não tem permissão para acessar esta página.",
+    ), 403
+
+
+@app.errorhandler(405)
+def erro_405(e):
+    return render_template(
+        "erro.html", codigo=405, titulo="Ação não permitida",
+        mensagem="Essa ação não pode ser acessada diretamente por este link.",
+    ), 405
+
+
+@app.errorhandler(500)
+def erro_500(e):
+    db.session.rollback()
+    return render_template(
+        "erro.html", codigo=500, titulo="Erro interno",
+        mensagem="Ocorreu um erro inesperado. Tente novamente em instantes.",
+    ), 500
 
 
 def init_db():

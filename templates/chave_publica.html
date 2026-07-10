@@ -1,6 +1,24 @@
 {% extends "base.html" %}
 {% block title %}{{ categoria }} - Chave - JJ System{% endblock %}
 
+{% macro atleta_slot(luta, num) %}
+{% set insc = luta.inscricao1 if num == 1 else luta.inscricao2 %}
+{% set origem = luta.origem1_luta if num == 1 else luta.origem2_luta %}
+{% set eh_vencedor = luta.vencedor_id and insc and luta.vencedor_id == insc.id %}
+<div class="bracket-athlete {% if eh_vencedor %}bracket-athlete-vencedor{% endif %}">
+    {% if insc %}
+    <div class="bracket-athlete-nome">{% if eh_vencedor %}<i class="bi bi-trophy-fill me-1"></i>{% endif %}{{ insc.aluno.nome_completo or insc.aluno.username }}</div>
+    <div class="bracket-athlete-academia">{{ insc.aluno.academia or '—' }}</div>
+    {% elif luta.bye %}
+    <span class="badge bg-success">BYE (passa direto)</span>
+    {% elif origem and origem.numero_luta %}
+    <div class="bracket-athlete-pendente">Vencedor da Luta {{ origem.numero_luta }}</div>
+    {% else %}
+    <div class="bracket-athlete-pendente">A definir</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
 {% block content %}
 <div class="d-flex flex-wrap align-items-center gap-3 mb-4 no-print">
     <a href="{{ url_for('chaves_publicas', comp=comp.id) }}" class="btn btn-outline-secondary btn-sm">
@@ -18,56 +36,64 @@
     <p class="text-muted mb-0 small">{{ comp.data.strftime('%d/%m/%Y') }}{% if comp.cidade %} &bull; {{ comp.cidade }} - {{ comp.estado }}{% endif %}</p>
 </div>
 
+{% if podio %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white">
+        <span class="fw-bold"><i class="bi bi-trophy-fill me-2 text-warning"></i>Pódio</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 text-center">
+            <div class="col-md-4">
+                <div class="fs-1">🥇</div>
+                <div class="fw-bold text-uppercase">{{ podio.campeao.aluno.nome_completo or podio.campeao.aluno.username }}</div>
+                <div class="text-muted small">{{ podio.campeao.aluno.academia or '—' }}</div>
+            </div>
+            {% if podio.vice %}
+            <div class="col-md-4">
+                <div class="fs-1">🥈</div>
+                <div class="fw-bold text-uppercase">{{ podio.vice.aluno.nome_completo or podio.vice.aluno.username }}</div>
+                <div class="text-muted small">{{ podio.vice.aluno.academia or '—' }}</div>
+            </div>
+            {% endif %}
+            {% if podio.terceiros %}
+            <div class="col-md-4">
+                <div class="fs-1">🥉</div>
+                {% for t in podio.terceiros %}
+                <div class="fw-bold text-uppercase">{{ t.aluno.nome_completo or t.aluno.username }}</div>
+                <div class="text-muted small mb-1">{{ t.aluno.academia or '—' }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
         <span class="fw-bold"><i class="bi bi-award me-2"></i>{{ categoria }}</span>
-        <span class="badge bg-light text-dark">{{ dados.total }} atleta(s)</span>
     </div>
     <div class="card-body">
-        {% if not dados.rodadas %}
-        <div class="alert alert-warning py-2 mb-0 small">
-            <i class="bi bi-exclamation-triangle me-1"></i>Apenas 1 atleta nesta categoria. Sem chave disponível.
-        </div>
-        {% else %}
         <div class="bracket-wrap">
-            {% for rodada in dados.rodadas %}
+            {% for rodada in rodadas %}
             <div class="bracket-round">
-                <div class="bracket-round-title">{{ dados.rotulos[loop.index0] }}</div>
+                <div class="bracket-round-title">{{ rotulos[loop.index0] }}</div>
                 <div class="bracket-round-matches">
-                    {% for match in rodada %}
+                    {% for luta in rodada %}
                     <div class="bracket-match">
-                        {% if match.placeholder %}
-                        <div class="bracket-box-placeholder">A definir</div>
-                        {% else %}
                         <div class="bracket-box">
                             <div class="bracket-box-header">
-                                {% if match.area %}Área {{ match.area }}{% endif %}
-                                {% if match.horario %} — {{ match.horario.strftime('%d/%m %H:%M') }}{% endif %}
-                                {% if not match.area and not match.horario %}A definir{% endif %}
+                                {% if luta.bye %}BYE{% else %}Luta {{ luta.numero_luta }}{% endif %}
                             </div>
-                            <div class="bracket-athlete">
-                                <div class="bracket-athlete-nome">{{ match.insc1.aluno.nome_completo or match.insc1.aluno.username }}</div>
-                                <div class="bracket-athlete-academia">{{ match.insc1.aluno.academia or '—' }}</div>
-                            </div>
-                            {% if match.insc2 %}
-                            <div class="bracket-athlete">
-                                <div class="bracket-athlete-nome">{{ match.insc2.aluno.nome_completo or match.insc2.aluno.username }}</div>
-                                <div class="bracket-athlete-academia">{{ match.insc2.aluno.academia or '—' }}</div>
-                            </div>
-                            {% else %}
-                            <div class="bracket-athlete">
-                                <span class="badge bg-success">BYE (passa direto)</span>
-                            </div>
-                            {% endif %}
+                            {{ atleta_slot(luta, 1) }}
+                            {{ atleta_slot(luta, 2) }}
                         </div>
-                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
             </div>
             {% endfor %}
         </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

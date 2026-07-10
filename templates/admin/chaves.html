@@ -197,77 +197,161 @@
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
             <span class="fw-bold"><i class="bi bi-award me-2"></i>{{ categoria }}</span>
-            <span class="badge bg-light text-dark">{{ inscricoes|length }} atleta(s)</span>
+            <div class="d-flex gap-2 align-items-center">
+                {% if categoria in rodadas_por_categoria %}
+                <span class="badge bg-success">Chave gerada</span>
+                {% endif %}
+                <span class="badge bg-light text-dark">{{ inscricoes|length }} atleta(s)</span>
+            </div>
         </div>
         <div class="card-body">
-            {% if inscricoes|length == 1 %}
-            <div class="alert alert-warning py-2 mb-3 small">
-                <i class="bi bi-exclamation-triangle me-1"></i>Apenas 1 atleta nesta categoria. Sem chave disponível.
-            </div>
-            {% else %}
-            <p class="text-muted small mb-2"><i class="bi bi-arrows-move me-1"></i>Arraste os atletas para reordenar e alterar os confrontos.</p>
-            {% endif %}
-            <div class="row g-3 chave-atletas" data-reorder-url="{{ url_for('admin_reordenar_chave', comp_id=comp.id) }}">
-                {% for insc in inscricoes %}
-                <div class="col-md-4 atleta-card" data-insc-id="{{ insc.id }}" {% if inscricoes|length >= 2 %}draggable="true"{% endif %}>
-                    <div class="card border border-dark {% if inscricoes|length >= 2 %}atleta-card-draggable{% endif %}">
-                        <div class="card-body p-3">
-                            <div class="d-flex align-items-center gap-2">
-                                {% if inscricoes|length >= 2 %}
-                                <i class="bi bi-grip-vertical text-muted"></i>
-                                {% endif %}
-                                <div class="athlete-num bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
-                                    {{ loop.index }}
-                                </div>
-                                <div>
-                                    <div class="fw-bold">
-                                        {{ insc.aluno.nome_completo or insc.aluno.username }}
-                                        {% if insc.presente %}
-                                        <span class="badge bg-success ms-1" title="Check-in feito"><i class="bi bi-check-lg"></i></span>
-                                        {% else %}
-                                        <span class="badge bg-warning text-dark ms-1" title="Sem check-in">sem check-in</span>
+            {% if categoria in rodadas_por_categoria %}
+                {% set podio = podios_por_categoria[categoria] %}
+                {% if podio %}
+                <div class="alert alert-light border py-2 mb-3 small">
+                    <i class="bi bi-trophy-fill text-warning me-1"></i>
+                    <strong>Campeão:</strong> {{ podio.campeao.aluno.nome_completo or podio.campeao.aluno.username }}
+                    {% if podio.vice %} &bull; <strong>Vice:</strong> {{ podio.vice.aluno.nome_completo or podio.vice.aluno.username }}{% endif %}
+                    {% if podio.terceiros %} &bull; <strong>3º:</strong> {{ podio.terceiros|map(attribute='aluno.nome_completo')|join(' e ') }}{% endif %}
+                </div>
+                {% endif %}
+                <div class="bracket-wrap">
+                    {% for rodada in rodadas_por_categoria[categoria] %}
+                    <div class="bracket-round">
+                        <div class="bracket-round-title">{{ rotulos_por_categoria[categoria][loop.index0] }}</div>
+                        <div class="bracket-round-matches">
+                            {% for luta in rodada %}
+                            <div class="bracket-match">
+                                <div class="bracket-box">
+                                    <div class="bracket-box-header d-flex justify-content-between align-items-center">
+                                        <span>{% if luta.bye %}BYE{% else %}Luta {{ luta.numero_luta }}{% endif %}</span>
+                                        {% if luta.vencedor_id and not luta.bye %}
+                                        <form method="POST" action="{{ url_for('admin_desfazer_resultado_luta', luta_id=luta.id) }}"
+                                              onsubmit="return confirm('Desfazer o resultado desta luta?')">
+                                            <button type="submit" class="btn btn-link btn-sm text-white-50 p-0" title="Desfazer resultado">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        </form>
                                         {% endif %}
                                     </div>
-                                    <div class="text-muted small">{{ insc.aluno.academia or '—' }}</div>
-                                    {% if insc.aluno.professor %}<div class="text-muted small">Prof. {{ insc.aluno.professor }}</div>{% endif %}
+                                    <div class="bracket-athlete {% if luta.vencedor_id and luta.vencedor_id == luta.inscricao1_id %}bracket-athlete-vencedor{% endif %}">
+                                        {% if luta.inscricao1 %}
+                                        <div class="bracket-athlete-nome">{% if luta.vencedor_id == luta.inscricao1_id %}<i class="bi bi-trophy-fill me-1"></i>{% endif %}{{ luta.inscricao1.aluno.nome_completo or luta.inscricao1.aluno.username }}</div>
+                                        <div class="bracket-athlete-academia">{{ luta.inscricao1.aluno.academia or '—' }}</div>
+                                        {% elif luta.bye %}
+                                        <span class="badge bg-success">BYE (passa direto)</span>
+                                        {% elif luta.origem1_luta %}
+                                        <div class="bracket-athlete-pendente">Vencedor da Luta {{ luta.origem1_luta.numero_luta }}</div>
+                                        {% else %}
+                                        <div class="bracket-athlete-pendente">A definir</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="bracket-athlete {% if luta.vencedor_id and luta.vencedor_id == luta.inscricao2_id %}bracket-athlete-vencedor{% endif %}">
+                                        {% if luta.inscricao2 %}
+                                        <div class="bracket-athlete-nome">{% if luta.vencedor_id == luta.inscricao2_id %}<i class="bi bi-trophy-fill me-1"></i>{% endif %}{{ luta.inscricao2.aluno.nome_completo or luta.inscricao2.aluno.username }}</div>
+                                        <div class="bracket-athlete-academia">{{ luta.inscricao2.aluno.academia or '—' }}</div>
+                                        {% elif not luta.bye and luta.origem2_luta %}
+                                        <div class="bracket-athlete-pendente">Vencedor da Luta {{ luta.origem2_luta.numero_luta }}</div>
+                                        {% elif not luta.bye %}
+                                        <div class="bracket-athlete-pendente">A definir</div>
+                                        {% endif %}
+                                    </div>
+                                    {% if luta.inscricao1 and luta.inscricao2 and not luta.vencedor_id %}
+                                    <div class="d-flex gap-1 mt-2">
+                                        <form method="POST" action="{{ url_for('admin_declarar_vencedor', luta_id=luta.id) }}" class="flex-fill">
+                                            <input type="hidden" name="vencedor_id" value="{{ luta.inscricao1_id }}">
+                                            <button type="submit" class="btn btn-outline-light btn-sm w-100">
+                                                <i class="bi bi-check-lg me-1"></i>{{ (luta.inscricao1.aluno.nome_completo or luta.inscricao1.aluno.username).split(' ')[0] }}
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin_declarar_vencedor', luta_id=luta.id) }}" class="flex-fill">
+                                            <input type="hidden" name="vencedor_id" value="{{ luta.inscricao2_id }}">
+                                            <button type="submit" class="btn btn-outline-light btn-sm w-100">
+                                                <i class="bi bi-check-lg me-1"></i>{{ (luta.inscricao2.aluno.nome_completo or luta.inscricao2.aluno.username).split(' ')[0] }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <form method="POST" action="{{ url_for('admin_gerar_chave', comp_id=comp.id) }}" class="mt-3"
+                      onsubmit="return confirm('Regerar a chave vai apagar todos os resultados ja registrados nesta categoria. Continuar?')">
+                    <input type="hidden" name="categoria" value="{{ categoria }}">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-arrow-repeat me-1"></i>Regerar Chave
+                    </button>
+                </form>
+            {% else %}
+                {% if inscricoes|length == 1 %}
+                <div class="alert alert-warning py-2 mb-3 small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Apenas 1 atleta nesta categoria. Sem chave disponível.
+                </div>
+                {% else %}
+                <p class="text-muted small mb-2"><i class="bi bi-arrows-move me-1"></i>Arraste os atletas para reordenar e alterar os confrontos.</p>
+                {% endif %}
+                <div class="row g-3 chave-atletas" data-reorder-url="{{ url_for('admin_reordenar_chave', comp_id=comp.id) }}">
+                    {% for insc in inscricoes %}
+                    <div class="col-md-4 atleta-card" data-insc-id="{{ insc.id }}" {% if inscricoes|length >= 2 %}draggable="true"{% endif %}>
+                        <div class="card border border-dark {% if inscricoes|length >= 2 %}atleta-card-draggable{% endif %}">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if inscricoes|length >= 2 %}
+                                    <i class="bi bi-grip-vertical text-muted"></i>
+                                    {% endif %}
+                                    <div class="athlete-num bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
+                                        {{ loop.index }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">
+                                            {{ insc.aluno.nome_completo or insc.aluno.username }}
+                                            {% if insc.presente %}
+                                            <span class="badge bg-success ms-1" title="Check-in feito"><i class="bi bi-check-lg"></i></span>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark ms-1" title="Sem check-in">sem check-in</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-muted small">{{ insc.aluno.academia or '—' }}</div>
+                                        {% if insc.aluno.professor %}<div class="text-muted small">Prof. {{ insc.aluno.professor }}</div>{% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            {% if inscricoes|length >= 2 %}
-            <div class="mt-4">
-                <h6 class="text-muted fw-bold small">CONFRONTOS GERADOS</h6>
-                <div class="row g-2">
-                    {% set ns = namespace(count=0) %}
-                    {% for i in range(0, inscricoes|length - 1, 2) %}
-                    {% set ns.count = ns.count + 1 %}
-                    <div class="col-md-6">
-                        <div class="confronto-card p-3 rounded border d-flex align-items-center gap-2">
-                            <span class="badge bg-secondary">{{ ns.count }}</span>
-                            <span class="fw-semibold small">{{ inscricoes[i].aluno.nome_completo or inscricoes[i].aluno.username }}</span>
-                            <span class="text-muted mx-1">vs</span>
-                            {% if i+1 < inscricoes|length %}
-                            <span class="fw-semibold small">{{ inscricoes[i+1].aluno.nome_completo or inscricoes[i+1].aluno.username }}</span>
-                            {% else %}
-                            <span class="badge bg-success">BYE (passa direto)</span>
-                            {% endif %}
-                        </div>
-                    </div>
                     {% endfor %}
-                    {% if inscricoes|length % 2 != 0 %}
-                    <div class="col-md-6">
-                        <div class="confronto-card p-3 rounded border d-flex align-items-center gap-2 bg-light">
-                            <span class="fw-semibold small">{{ inscricoes[-1].aluno.nome_completo or inscricoes[-1].aluno.username }}</span>
-                            <span class="badge bg-success ms-2">BYE</span>
-                        </div>
-                    </div>
-                    {% endif %}
                 </div>
-            </div>
+
+                {% if inscricoes|length >= 2 %}
+                <div class="mt-4">
+                    <h6 class="text-muted fw-bold small">CONFRONTOS GERADOS</h6>
+                    <div class="row g-2">
+                        {% for insc1, insc2 in confrontos_por_categoria[categoria] %}
+                        <div class="col-md-6">
+                            <div class="confronto-card p-3 rounded border d-flex align-items-center gap-2">
+                                <span class="badge bg-secondary">{{ loop.index }}</span>
+                                <span class="fw-semibold small">{{ insc1.aluno.nome_completo or insc1.aluno.username }}</span>
+                                {% if insc2 %}
+                                <span class="text-muted mx-1">vs</span>
+                                <span class="fw-semibold small">{{ insc2.aluno.nome_completo or insc2.aluno.username }}</span>
+                                {% else %}
+                                <span class="badge bg-success ms-auto">BYE (passa direto)</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <form method="POST" action="{{ url_for('admin_gerar_chave', comp_id=comp.id) }}" class="mt-3">
+                    <input type="hidden" name="categoria" value="{{ categoria }}">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-diagram-3 me-1"></i>Gerar Chave
+                    </button>
+                </form>
+                {% endif %}
             {% endif %}
         </div>
     </div>
@@ -303,29 +387,19 @@ document.querySelectorAll('.luta-casada-select').forEach(function(s) {
 });
 atualizarSelectsLutaCasada();
 
-// Arrastar atletas para reordenar dentro da categoria e alterar os confrontos
+// Arrastar atletas para reordenar dentro da categoria e alterar os confrontos.
+// Soltar o atleta arrastado sobre outro TROCA os dois de lugar (nao empurra os demais).
 document.querySelectorAll('.chave-atletas').forEach(function(container) {
     let dragEl = null;
 
-    container.querySelectorAll('.atleta-card[draggable="true"]').forEach(function(card) {
-        card.addEventListener('dragstart', function() {
-            dragEl = card;
-            card.classList.add('opacity-50');
-        });
-        card.addEventListener('dragend', function() {
-            card.classList.remove('opacity-50');
-            salvarOrdemChave(container);
-        });
-        card.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            if (!dragEl || card === dragEl) return;
-            const bounding = card.getBoundingClientRect();
-            const antesDoMeio = (e.clientX - bounding.left) < bounding.width / 2;
-            card.parentNode.insertBefore(dragEl, antesDoMeio ? card : card.nextSibling);
-        });
-    });
+    function trocarNodes(a, b) {
+        const aNext = a.nextSibling;
+        const bNext = b.nextSibling;
+        b.parentNode.insertBefore(a, bNext);
+        a.parentNode.insertBefore(b, aNext);
+    }
 
-    function salvarOrdemChave(container) {
+    function salvarOrdemChave() {
         const ids = Array.from(container.querySelectorAll('.atleta-card')).map(function(c) {
             return c.dataset.inscId;
         });
@@ -337,6 +411,25 @@ document.querySelectorAll('.chave-atletas').forEach(function(container) {
             if (r.ok) window.location.reload();
         });
     }
+
+    container.querySelectorAll('.atleta-card[draggable="true"]').forEach(function(card) {
+        card.addEventListener('dragstart', function() {
+            dragEl = card;
+            card.classList.add('opacity-50');
+        });
+        card.addEventListener('dragend', function() {
+            card.classList.remove('opacity-50');
+        });
+        card.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+        card.addEventListener('drop', function(e) {
+            e.preventDefault();
+            if (!dragEl || card === dragEl) return;
+            trocarNodes(dragEl, card);
+            salvarOrdemChave();
+        });
+    });
 });
 </script>
 {% endblock %}

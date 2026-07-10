@@ -211,6 +211,13 @@ body {
     border: 1px dashed #ccc;
     border-radius: 8px;
 }
+.bracket-athlete-vencedor { color: #2ecc71; }
+.bracket-athlete-vencedor .bracket-athlete-academia { color: #a8e6bf; }
+.bracket-athlete-pendente {
+    font-size: 0.78rem;
+    font-style: italic;
+    color: #999;
+}
 
 /* ─── RESPONSIVE ─────────────────────────────────────────────── */
 @media (max-width: 576px) {

@@ -257,3 +257,31 @@ class LutaCasada(db.Model):
 
     def __repr__(self):
         return "<LutaCasada " + str(self.id) + ">"
+
+
+class LutaChave(db.Model):
+    """Luta persistida de uma chave eliminatoria simples, gerada a partir da
+    ordem dos inscritos. Guarda o resultado (vencedor) e a origem (de qual
+    luta vem cada lado) para permitir o avanco automatico pela chave."""
+    __tablename__ = "lutas_chave"
+    id = db.Column(db.Integer, primary_key=True)
+    competicao_id = db.Column(db.Integer, db.ForeignKey("competicoes.id"), nullable=False)
+    chave = db.Column(db.String(150), nullable=False)
+    rodada = db.Column(db.Integer, nullable=False)
+    posicao = db.Column(db.Integer, nullable=False)
+    numero_luta = db.Column(db.Integer)
+    bye = db.Column(db.Boolean, default=False)
+    inscricao1_id = db.Column(db.Integer, db.ForeignKey("inscricoes.id"))
+    inscricao2_id = db.Column(db.Integer, db.ForeignKey("inscricoes.id"))
+    vencedor_id = db.Column(db.Integer, db.ForeignKey("inscricoes.id"))
+    origem1_luta_id = db.Column(db.Integer, db.ForeignKey("lutas_chave.id"))
+    origem2_luta_id = db.Column(db.Integer, db.ForeignKey("lutas_chave.id"))
+
+    inscricao1 = db.relationship("Inscricao", foreign_keys=[inscricao1_id])
+    inscricao2 = db.relationship("Inscricao", foreign_keys=[inscricao2_id])
+    vencedor = db.relationship("Inscricao", foreign_keys=[vencedor_id])
+    origem1_luta = db.relationship("LutaChave", foreign_keys=[origem1_luta_id], remote_side=[id])
+    origem2_luta = db.relationship("LutaChave", foreign_keys=[origem2_luta_id], remote_side=[id])
+
+    def __repr__(self):
+        return "<LutaChave " + self.chave + " R" + str(self.rodada) + ">"
