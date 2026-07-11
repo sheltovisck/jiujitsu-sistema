@@ -276,6 +276,8 @@ class LutaChave(db.Model):
     vencedor_id = db.Column(db.Integer, db.ForeignKey("inscricoes.id"))
     origem1_luta_id = db.Column(db.Integer, db.ForeignKey("lutas_chave.id"))
     origem2_luta_id = db.Column(db.Integer, db.ForeignKey("lutas_chave.id"))
+    origem1_tipo = db.Column(db.String(10), default="vencedor")
+    origem2_tipo = db.Column(db.String(10), default="vencedor")
 
     inscricao1 = db.relationship("Inscricao", foreign_keys=[inscricao1_id])
     inscricao2 = db.relationship("Inscricao", foreign_keys=[inscricao2_id])

@@ -4,6 +4,7 @@
 {% macro atleta_slot(luta, num) %}
 {% set insc = luta.inscricao1 if num == 1 else luta.inscricao2 %}
 {% set origem = luta.origem1_luta if num == 1 else luta.origem2_luta %}
+{% set origem_tipo = luta.origem1_tipo if num == 1 else luta.origem2_tipo %}
 {% set eh_vencedor = luta.vencedor_id and insc and luta.vencedor_id == insc.id %}
 <div class="bracket-athlete {% if eh_vencedor %}bracket-athlete-vencedor{% endif %}">
     {% if insc %}
@@ -12,7 +13,7 @@
     {% elif luta.bye %}
     <span class="badge bg-success">BYE (passa direto)</span>
     {% elif origem and origem.numero_luta %}
-    <div class="bracket-athlete-pendente">Vencedor da Luta {{ origem.numero_luta }}</div>
+    <div class="bracket-athlete-pendente">{{ 'Perdedor' if origem_tipo == 'perdedor' else 'Vencedor' }} da Luta {{ origem.numero_luta }}</div>
     {% else %}
     <div class="bracket-athlete-pendente">A definir</div>
     {% endif %}

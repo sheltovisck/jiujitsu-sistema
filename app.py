@@ -1152,12 +1152,48 @@ def _rotulos_rodadas(qtd_rodadas):
     return rotulos
 
 
+def _gerar_lutas_chave_tres(comp_id, categoria, inscricoes):
+    """Formato especial para chaves com exatamente 3 atletas: ninguem passa
+    direto para a final. Luta 1: atleta A x atleta B. Luta 2 (repescagem):
+    perdedor da luta 1 x atleta C (quem ficaria de bye). Final: vencedor da
+    luta 1 x vencedor da luta 2."""
+    a, b, c = inscricoes[0], inscricoes[1], inscricoes[2]
+
+    luta1 = LutaChave(
+        competicao_id=comp_id, chave=categoria, rodada=1, posicao=0,
+        numero_luta=1, inscricao1_id=a.id, inscricao2_id=b.id,
+    )
+    db.session.add(luta1)
+    db.session.flush()
+
+    luta2 = LutaChave(
+        competicao_id=comp_id, chave=categoria, rodada=1, posicao=1,
+        numero_luta=2, inscricao1_id=c.id,
+        origem2_luta_id=luta1.id, origem2_tipo="perdedor",
+    )
+    db.session.add(luta2)
+    db.session.flush()
+
+    final = LutaChave(
+        competicao_id=comp_id, chave=categoria, rodada=2, posicao=0,
+        numero_luta=3,
+        origem1_luta_id=luta1.id, origem1_tipo="vencedor",
+        origem2_luta_id=luta2.id, origem2_tipo="vencedor",
+    )
+    db.session.add(final)
+    db.session.commit()
+
+
 def gerar_lutas_chave(comp_id, categoria, inscricoes):
     """(Re)gera do zero as lutas persistidas de uma chave, com numeracao
     sequencial e byes automaticos, a partir da ordem atual dos inscritos.
     Apaga qualquer resultado ja registrado antes para essa categoria."""
     LutaChave.query.filter_by(competicao_id=comp_id, chave=categoria).delete()
     db.session.flush()
+
+    if len(inscricoes) == 3:
+        _gerar_lutas_chave_tres(comp_id, categoria, inscricoes)
+        return
 
     contador = {"n": 1}
 
@@ -1238,7 +1274,20 @@ def calcular_podio(lutas):
         return None
     vice_id = final.inscricao2_id if final.vencedor_id == final.inscricao1_id else final.inscricao1_id
     terceiros = []
-    if total_rodadas >= 2:
+    tem_repescagem = any(l.origem1_tipo == "perdedor" or l.origem2_tipo == "perdedor" for l in lutas)
+    if tem_repescagem:
+        # Formato de 3 atletas: so quem perde a luta de repescagem fica em 3.
+        repescagem = next(
+            (l for l in lutas if l.origem1_tipo == "perdedor" or l.origem2_tipo == "perdedor"), None
+        )
+        if repescagem and repescagem.vencedor_id:
+            perdedor_id = (
+                repescagem.inscricao2_id if repescagem.vencedor_id == repescagem.inscricao1_id
+                else repescagem.inscricao1_id
+            )
+            if perdedor_id:
+                terceiros.append(perdedor_id)
+    elif total_rodadas >= 2:
         for sf in [l for l in lutas if l.rodada == total_rodadas - 1]:
             if sf.vencedor_id:
                 perdedor_id = sf.inscricao2_id if sf.vencedor_id == sf.inscricao1_id else sf.inscricao1_id
@@ -1253,20 +1302,30 @@ def calcular_podio(lutas):
 
 def _desfazer_resultado_cascata(luta):
     """Limpa o resultado de uma luta e desfaz em cascata o avanco que ele
-    ja tenha gerado nas lutas seguintes."""
+    ja tenha gerado nas lutas seguintes (tanto para quem recebeu o vencedor
+    quanto para quem recebeu o perdedor, ex: formato de repescagem)."""
     if not luta.vencedor_id:
         return
     vencedor_id = luta.vencedor_id
+    perdedor_id = luta.inscricao2_id if vencedor_id == luta.inscricao1_id else luta.inscricao1_id
     luta.vencedor_id = None
-    filha = LutaChave.query.filter(
+    filhas = LutaChave.query.filter(
         db.or_(LutaChave.origem1_luta_id == luta.id, LutaChave.origem2_luta_id == luta.id)
-    ).first()
-    if filha:
-        if filha.origem1_luta_id == luta.id and filha.inscricao1_id == vencedor_id:
-            filha.inscricao1_id = None
-        elif filha.origem2_luta_id == luta.id and filha.inscricao2_id == vencedor_id:
-            filha.inscricao2_id = None
-        _desfazer_resultado_cascata(filha)
+    ).all()
+    for filha in filhas:
+        alterado = False
+        if filha.origem1_luta_id == luta.id:
+            esperado = perdedor_id if filha.origem1_tipo == "perdedor" else vencedor_id
+            if filha.inscricao1_id == esperado:
+                filha.inscricao1_id = None
+                alterado = True
+        if filha.origem2_luta_id == luta.id:
+            esperado = perdedor_id if filha.origem2_tipo == "perdedor" else vencedor_id
+            if filha.inscricao2_id == esperado:
+                filha.inscricao2_id = None
+                alterado = True
+        if alterado:
+            _desfazer_resultado_cascata(filha)
 
 
 @app.route("/admin/competicao/<int:comp_id>/chave/gerar", methods=["POST"])
@@ -1322,15 +1381,16 @@ def admin_declarar_vencedor(luta_id):
         flash("Vencedor invalido.", "danger")
         return _redirect_apos_resultado(luta)
     luta.vencedor_id = vencedor_id
+    perdedor_id = luta.inscricao2_id if vencedor_id == luta.inscricao1_id else luta.inscricao1_id
     db.session.flush()
-    filha = LutaChave.query.filter(
+    filhas = LutaChave.query.filter(
         db.or_(LutaChave.origem1_luta_id == luta.id, LutaChave.origem2_luta_id == luta.id)
-    ).first()
-    if filha:
+    ).all()
+    for filha in filhas:
         if filha.origem1_luta_id == luta.id:
-            filha.inscricao1_id = vencedor_id
-        else:
-            filha.inscricao2_id = vencedor_id
+            filha.inscricao1_id = perdedor_id if filha.origem1_tipo == "perdedor" else vencedor_id
+        if filha.origem2_luta_id == luta.id:
+            filha.inscricao2_id = perdedor_id if filha.origem2_tipo == "perdedor" else vencedor_id
     db.session.commit()
     flash("Resultado registrado!", "success")
     return _redirect_apos_resultado(luta)
@@ -1806,6 +1866,10 @@ def migrar_banco(engine):
                     inscricao_id INTEGER NOT NULL REFERENCES inscricoes(id),
                     ordem_chave INTEGER DEFAULT 0
                 )''', 'Tabela absoluto_inscritos verificada')
+        executar(conn, "ALTER TABLE lutas_chave ADD COLUMN origem1_tipo VARCHAR(10) DEFAULT 'vencedor'",
+                  'Adicionado: lutas_chave.origem1_tipo')
+        executar(conn, "ALTER TABLE lutas_chave ADD COLUMN origem2_tipo VARCHAR(10) DEFAULT 'vencedor'",
+                  'Adicionado: lutas_chave.origem2_tipo')
 
 
 @app.errorhandler(404)

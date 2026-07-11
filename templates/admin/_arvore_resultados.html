@@ -33,7 +33,7 @@
                         {% elif luta.bye %}
                         <span class="badge bg-success">BYE (passa direto)</span>
                         {% elif luta.origem1_luta %}
-                        <div class="bracket-athlete-pendente">Vencedor da Luta {{ luta.origem1_luta.numero_luta }}</div>
+                        <div class="bracket-athlete-pendente">{{ 'Perdedor' if luta.origem1_tipo == 'perdedor' else 'Vencedor' }} da Luta {{ luta.origem1_luta.numero_luta }}</div>
                         {% else %}
                         <div class="bracket-athlete-pendente">A definir</div>
                         {% endif %}
@@ -43,7 +43,7 @@
                         <div class="bracket-athlete-nome">{% if luta.vencedor_id == luta.inscricao2_id %}<i class="bi bi-trophy-fill me-1"></i>{% endif %}{{ luta.inscricao2.aluno.nome_completo or luta.inscricao2.aluno.username }}</div>
                         <div class="bracket-athlete-academia">{{ luta.inscricao2.aluno.academia or '—' }}</div>
                         {% elif not luta.bye and luta.origem2_luta %}
-                        <div class="bracket-athlete-pendente">Vencedor da Luta {{ luta.origem2_luta.numero_luta }}</div>
+                        <div class="bracket-athlete-pendente">{{ 'Perdedor' if luta.origem2_tipo == 'perdedor' else 'Vencedor' }} da Luta {{ luta.origem2_luta.numero_luta }}</div>
                         {% elif not luta.bye %}
                         <div class="bracket-athlete-pendente">A definir</div>
                         {% endif %}
