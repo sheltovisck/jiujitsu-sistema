@@ -118,7 +118,10 @@ def listagem_inscritos():
     sexo_filtro = request.args.get("sexo", "").strip()
     comp_selecionada = Competicao.query.get_or_404(comp_id) if comp_id else None
 
-    base_query = Inscricao.query.filter_by(status="aprovado").join(User)
+    base_query = Inscricao.query.filter_by(status="aprovado").join(User).options(
+        db.contains_eager(Inscricao.aluno).joinedload(User.academia_obj),
+        db.contains_eager(Inscricao.aluno).joinedload(User.professor_obj),
+    )
     if comp_id:
         base_query = base_query.filter(Inscricao.competicao_id == comp_id)
     todas = base_query.all()
@@ -178,7 +181,7 @@ def chave_publica():
     comp_selecionada = Competicao.query.filter_by(id=comp_id, chaves_publicas=True).first() if comp_id else None
     if not comp_selecionada or not categoria:
         abort(404)
-    lutas = LutaChave.query.filter_by(competicao_id=comp_id, chave=categoria).all()
+    lutas = _query_lutas_chave(comp_id, categoria).all()
     if not lutas:
         abort(404)
     rodadas, rotulos = organizar_lutas_por_rodada(lutas)
@@ -478,7 +481,10 @@ def professor_required(f):
 def professor_inscricoes():
     status_filtro = request.args.get("status", "pendente")
     comp_filtro = request.args.get("comp", "")
-    query = Inscricao.query
+    query = Inscricao.query.options(
+        db.joinedload(Inscricao.aluno).joinedload(User.academia_obj),
+        db.joinedload(Inscricao.aluno).joinedload(User.professor_obj),
+    )
     if status_filtro and status_filtro != "todos":
         query = query.filter_by(status=status_filtro)
     if comp_filtro:
@@ -525,7 +531,9 @@ def admin_dashboard():
     total_competicoes = Competicao.query.count()
     total_inscricoes = Inscricao.query.filter(Inscricao.status != "cancelado").count()
     pendentes = Inscricao.query.filter_by(status="pendente").count()
-    inscricoes_recentes = Inscricao.query.order_by(Inscricao.created_at.desc()).limit(10).all()
+    inscricoes_recentes = Inscricao.query.options(
+        db.joinedload(Inscricao.aluno).joinedload(User.academia_obj),
+    ).order_by(Inscricao.created_at.desc()).limit(10).all()
     return render_template("admin/dashboard.html",
                            total_alunos=total_alunos, total_competicoes=total_competicoes,
                            total_inscricoes=total_inscricoes, pendentes=pendentes,
@@ -536,7 +544,10 @@ def admin_dashboard():
 @login_required
 @professor_required
 def admin_alunos():
-    query = User.query.filter_by(is_admin=False)
+    query = User.query.filter_by(is_admin=False).options(
+        db.joinedload(User.academia_obj), db.joinedload(User.professor_obj),
+        db.joinedload(User.inscricoes),
+    )
     if not current_user.is_admin:
         query = query.filter_by(professor_id=current_user.professor_id)
     alunos = query.order_by(User.nome_completo).all()
@@ -737,7 +748,10 @@ def admin_toggle_competicao(comp_id):
 def admin_inscricoes():
     status_filtro = request.args.get("status", "pendente")
     comp_filtro = request.args.get("comp", "")
-    query = Inscricao.query
+    query = Inscricao.query.options(
+        db.joinedload(Inscricao.aluno).joinedload(User.academia_obj),
+        db.joinedload(Inscricao.aluno).joinedload(User.professor_obj),
+    )
     if status_filtro and status_filtro != "todos":
         query = query.filter_by(status=status_filtro)
     if comp_filtro:
@@ -842,7 +856,10 @@ def montar_chaves(comp_id):
     categoria e viram uma chave separada chamada 'Luta Casada'."""
     inscricoes = Inscricao.query.filter_by(
         competicao_id=comp_id
-    ).filter(Inscricao.status == "aprovado").all()
+    ).filter(Inscricao.status == "aprovado").options(
+        db.joinedload(Inscricao.aluno).joinedload(User.academia_obj),
+        db.joinedload(Inscricao.aluno).joinedload(User.professor_obj),
+    ).all()
     inscricoes.sort(key=lambda i: (i.ordem_chave or 0, i.id))
     grupos = GrupoPeso.query.filter_by(competicao_id=comp_id).all()
     lutas_casadas = LutaCasada.query.filter_by(competicao_id=comp_id).order_by(LutaCasada.ordem).all()
@@ -953,7 +970,7 @@ def admin_chaves(comp_id):
     tempos = {t.chave: t.minutos for t in TempoCategoria.query.filter_by(competicao_id=comp_id).all()}
     inscritos_disponiveis = Inscricao.query.filter_by(
         competicao_id=comp_id, status="aprovado"
-    ).join(User).order_by(User.nome_completo).all()
+    ).join(User).options(db.contains_eager(Inscricao.aluno)).order_by(User.nome_completo).all()
     confrontos_por_categoria = {
         categoria: gerar_confrontos(inscricoes) for categoria, inscricoes in chaves.items()
     }
@@ -962,7 +979,7 @@ def admin_chaves(comp_id):
     rotulos_por_categoria = {}
     podios_por_categoria = {}
     for categoria in chaves.keys():
-        lutas = LutaChave.query.filter_by(competicao_id=comp_id, chave=categoria).all()
+        lutas = _query_lutas_chave(comp_id, categoria).all()
         if lutas:
             rodadas, rotulos = organizar_lutas_por_rodada(lutas)
             rodadas_por_categoria[categoria] = rodadas
@@ -1186,6 +1203,18 @@ def gerar_lutas_chave(comp_id, categoria, inscricoes):
     db.session.commit()
 
 
+def _query_lutas_chave(comp_id, chave):
+    """Consulta as lutas persistidas de uma chave, ja com os atletas e
+    academias carregados de uma vez (evita N+1 queries ao exibir a arvore)."""
+    return LutaChave.query.filter_by(competicao_id=comp_id, chave=chave).options(
+        db.joinedload(LutaChave.inscricao1).joinedload(Inscricao.aluno).joinedload(User.academia_obj),
+        db.joinedload(LutaChave.inscricao2).joinedload(Inscricao.aluno).joinedload(User.academia_obj),
+        db.joinedload(LutaChave.vencedor),
+        db.joinedload(LutaChave.origem1_luta),
+        db.joinedload(LutaChave.origem2_luta),
+    )
+
+
 def organizar_lutas_por_rodada(lutas):
     """Agrupa as lutas persistidas de uma categoria em rodadas ordenadas,
     prontas para exibicao em arvore. Retorna (rodadas, rotulos)."""
@@ -1333,7 +1362,10 @@ def admin_absolutos(comp_id):
     absolutos = Absoluto.query.filter_by(competicao_id=comp_id).order_by(Absoluto.created_at).all()
     todos_inscritos = Inscricao.query.filter_by(
         competicao_id=comp_id, status="aprovado"
-    ).join(User).order_by(User.nome_completo).all()
+    ).join(User).options(
+        db.contains_eager(Inscricao.aluno).joinedload(User.academia_obj),
+        db.contains_eager(Inscricao.aluno).joinedload(User.professor_obj),
+    ).order_by(User.nome_completo).all()
 
     dados_absolutos = []
     for absoluto in absolutos:
@@ -1345,7 +1377,7 @@ def admin_absolutos(comp_id):
             if (not absoluto.sexo or i.aluno.sexo == absoluto.sexo)
             and (not faixas_incluidas or faixa_base(i.faixa_inscricao) in faixas_incluidas)
         ]
-        lutas = LutaChave.query.filter_by(competicao_id=comp_id, chave=absoluto.chave_nome()).all()
+        lutas = _query_lutas_chave(comp_id, absoluto.chave_nome()).all()
         rodadas, rotulos, podio = [], [], None
         if lutas:
             rodadas, rotulos = organizar_lutas_por_rodada(lutas)
@@ -1551,7 +1583,9 @@ def admin_desfazer_grupo_peso(grupo_id):
 def checkin_competicao(comp_id):
     comp = Competicao.query.get_or_404(comp_id)
     busca = request.args.get("q", "").strip()
-    query = Inscricao.query.filter_by(competicao_id=comp_id).filter(Inscricao.status == "aprovado")
+    query = Inscricao.query.filter_by(competicao_id=comp_id).filter(Inscricao.status == "aprovado").options(
+        db.joinedload(Inscricao.aluno).joinedload(User.professor_obj),
+    )
     if not current_user.is_admin:
         query = query.join(User).filter(User.professor_id == current_user.professor_id)
     if busca:
